@@ -1,0 +1,46 @@
+body {
+    padding: 0;
+    margin: 0;
+}
+
+.display {
+    width: 100vw;
+    height: 100vh;
+    /* background-color: aqua; */
+}
+
+.title {
+    display: flex;
+    justify-content: center;
+    font-family: 'Roboto', sans-serif;
+    background-color: blue;
+    align-items: center;
+    height: 20%;
+}
+
+.content {
+    display: flex;
+    justify-content: center;
+    font-family: 'Roboto', sans-serif;
+    /* background-color: red; */
+    width: 100vw;
+    height: 80%;
+}
+
+.content form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    /* background-color: blue; */
+}
+
+.content .form div {
+    padding: 20px;
+}
+
+.content .load_file {
+    padding: 20px;
+    /* background-color: green; */
+}

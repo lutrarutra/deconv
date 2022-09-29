@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>deconV</title>
+        <!-- App style -->
+        <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/css/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='node_modules/bootstrap/dist/js/bootstrap.bundle.min.js') }}">
+    </head>
+
+    <body>
+        <div class="display">
+          {% block body %} {% endblock %}
+        </div>
+    </body>
+</html>

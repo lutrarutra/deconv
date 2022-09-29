@@ -1,0 +1,9 @@
+name: deconv
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+dependencies:
+  - python=3.8
+  - pip
+  - flask

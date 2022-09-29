@@ -1,0 +1,46 @@
+# Pipeline parameters
+
+# Cell-type label identifying column in pheno data table
+label_key: "cellType"
+# Layer in adata.layers to use for deconvolution ("ncounts" - normalized mRNA counts, "counts" - raw mRNA counts)
+layer: "ncounts"
+# Index identifying barcode column in pheno data table
+index_col: 0
+# Selected cell types, if empty, all cell types found in scRNA-seq are selected
+selected_ct:
+  - alpha
+  - beta
+  - delta
+  - gamma
+
+# Model type: ("prob" - probabilistic, "mse" - linear with mse loss)
+model_type: "prob"
+
+# ignore other cell types not specified in 'selected_ct'
+ignore_others: true
+
+# Top n variable genes, use all common genes if '-1'
+n_top_genes: -1
+
+# Plot pseudo bulk vs. bulk scatter plot per sample
+plot_pseudo_bulk: true
+
+# -------------------------------------------- #
+
+# Preprocessing
+
+
+# -------------------------------------------- #
+
+# Optimization
+
+lr: 0.01
+epochs: 5000
+
+# -------------------------------------------- #
+
+# I/O
+
+fig_fmt: "png"
+
+# -------------------------------------------- #
