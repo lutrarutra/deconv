@@ -4,8 +4,8 @@ from typing import Literal
 # Custom tools
 import sys
 
-from base import NSM, MSEM
-import plot as pl
+from core.base import NSM, MSEM
+import core.plot as pl
 
 import torch
 import torch.nn as nn
@@ -18,13 +18,9 @@ import numpy as np
 import scanpy as sc
 
 from matplotlib import rcParams
-import pyro
 
 import scipy.stats as S
 
-from scvi import REGISTRY_KEYS
-
-from torch.utils.tensorboard import SummaryWriter
 
 params = {
     "jupyter": False
@@ -34,13 +30,12 @@ def fmt_c(w):
     return " ".join([f"{v:.2f}" for v in w])
 
 class DeconV():
-    def __init__(self, sc_adata, bulk_adata, cell_types, params, use_sub_types=False, use_gene_weights=False, gene_weights_method: Literal["sum", "min", "max"] = "sum"):
+    def __init__(self, sc_adata, bulk_adata, cell_types, params, use_sub_types=False):
         self.params = params
 
         self.sadata = sc_adata
         self.badata = bulk_adata
         self.cell_types = cell_types
-        # self.bulk_sample_cols = []
         self.n_all_genes = self.sadata.n_vars
         self.n_used_genes = self.n_all_genes
         self.n_cell_types = len(cell_types)
@@ -49,9 +44,7 @@ class DeconV():
         self.label_key = "sub_type" if use_sub_types else self.params["cell_type_key"]
         self.sub_types = []
         self.n_labels = -1 if use_sub_types else self.n_cell_types
-        self.use_gene_weights = use_gene_weights
         self.gene_weights = None
-        self.gene_weights_method = gene_weights_method
         self.normalising_constant = torch.tensor([1.0])
 
         self.sadata.var["pseudo"] = self.sadata.layers[self.params['layer']].sum(0)
@@ -61,9 +54,24 @@ class DeconV():
 
     
     def init_stats(self):
-        sc.tl.pca(self.sadata)     
+        # Neighbors for clustering
+        sc.pp.pca(self.sadata)
+        sc.pp.neighbors(self.sadata, random_state=0)
+
+        # Pseudobulk vs. Bulk
+        self.sadata.var["log_bulk_residual"] = 0.0
+        for i in range(self.badata.shape[0]):
+            self.sadata.var[f"bulk_{i}"] = self.badata.layers[self.params['layer']][i,:]
+            self.sadata.var[f"bulk_residual_{i}"] = self.sadata.var[f"bulk_{i}"] - np.log1p(self.sadata.var["pseudo"])
+            self.sadata.var[f"log_bulk_residual_{i}"] = self.badata.X[i,:] - np.log1p(self.sadata.var["pseudo"])
+            self.sadata.var["log_bulk_residual"] += self.sadata.var[f"log_bulk_residual_{i}"]
+
+        self.sadata.var["log_bulk_residual"] /= self.badata.shape[0]
+
+        sc.tl.pca(self.sadata)
         
         sc.tl.rank_genes_groups(self.sadata, self.params["cell_type_key"], method="t-test")
+
         self.marker_genes = list(sum(self.sadata.uns["rank_genes_groups"]["names"].tolist(),()))
 
         self.sadata.var = self.sadata.var.drop(columns=[k for k in self.sadata.var.columns if "ct_marker_" in k])
@@ -73,7 +81,7 @@ class DeconV():
                 Cell Type Specific Stats
         ---------------------------------------
         """
-        gene_weights = torch.empty(self.n_all_genes, self.n_cell_types)
+        dispersion = torch.empty(self.n_all_genes, self.n_cell_types)
 
         for i, cell_type in enumerate(self.cell_types):
             layer = self.sadata[self.sadata.obs[self.params['cell_type_key']] == cell_type, :].layers[self.params['layer']]
@@ -91,10 +99,14 @@ class DeconV():
             self.sadata.var[f"dropout_{cell_type}"] = (layer == 0).mean(0)
             self.sadata.var[f"cv2_{cell_type}"] = (self.sadata.var[f"std_{cell_type}"]/self.sadata.var[f"mu_{cell_type}"])**2
             
-            gene_weights[:, i] = torch.tensor(self.sadata.var[f"cv2_{cell_type}"] / self.sadata.var[f"mu_{cell_type}"])
+            dispersion[:, i] = torch.tensor(self.sadata.var[f"cv2_{cell_type}"] / self.sadata.var[f"mu_{cell_type}"])
         
-        fnc = getattr(torch, self.gene_weights_method)
-        self.sadata.var["weight"] = fnc(gene_weights, dim=1).values
+        self.sadata.var["dispersion_min"] = torch.min(dispersion, dim=1).values
+        self.sadata.var["dispersion_max"] = torch.max(dispersion, dim=1).values
+        self.sadata.var["dispersion_mu"] = torch.mean(dispersion, dim=1)
+        self.sadata.var["log_dispersion_min"] = np.log(self.sadata.var["dispersion_min"])
+        self.sadata.var["log_dispersion_max"] = np.log(self.sadata.var["dispersion_max"])
+        self.sadata.var["log_dispersion_mu"] = np.log(self.sadata.var["dispersion_mu"])
 
         """ 
         ---------------------------------------
@@ -104,17 +116,30 @@ class DeconV():
         mapping = {}
         for cell_type in self.cell_types:
             mapping[cell_type] = {}
-            mapping[cell_type]["pval"] = {}
+            mapping[cell_type]["pvals_adj"] = {}
             mapping[cell_type]["score"] = {}
+            mapping[cell_type]["logFC"] = {}
 
-        for genes, scores, pvals in list(zip(self.sadata.uns["rank_genes_groups"]["names"], self.sadata.uns["rank_genes_groups"]["scores"], self.sadata.uns["rank_genes_groups"]["pvals_adj"])):
+        for genes, scores, pvals, logFC in zip(
+            self.sadata.uns["rank_genes_groups"]["names"],
+            self.sadata.uns["rank_genes_groups"]["scores"],
+            self.sadata.uns["rank_genes_groups"]["pvals_adj"],
+            self.sadata.uns["rank_genes_groups"]["logfoldchanges"]):
             for i, (cell_type, _) in enumerate(genes.dtype.descr):
                 mapping[cell_type]["score"][genes[i]] = scores[i]
-                mapping[cell_type]["pval"][genes[i]] = pvals[i]
+                mapping[cell_type]["pvals_adj"][genes[i]] = pvals[i]
+                mapping[cell_type]["logFC"][genes[i]] = logFC[i]
+                
 
+        dfs = {}
         for cell_type in self.cell_types:
+            dfs[cell_type] = pd.DataFrame(mapping[cell_type])
+            dfs[cell_type]["-log_pvals_adj"] = -np.log10(dfs[cell_type]["pvals_adj"])
             self.sadata.var.loc[list(mapping[cell_type]["score"].keys()), f"ct_marker_score_{cell_type}"] = list(mapping[cell_type]["score"].values())
-            self.sadata.var.loc[list(mapping[cell_type]["pval"].keys()), f"ct_marker_pval_{cell_type}"] = list(mapping[cell_type]["pval"].values())
+            self.sadata.var.loc[list(mapping[cell_type]["pvals_adj"].keys()), f"ct_marker_pval_{cell_type}"] = list(mapping[cell_type]["pvals_adj"].values())
+        
+        self.sadata.uns["ranked_genes"] = dfs
+
 
         marker_score_mu = self.sadata.var.loc[:, self.sadata.var.columns.str.contains("ct_marker_score_")].mean(axis=1)
         marker_score_max = self.sadata.var.loc[:, self.sadata.var.columns.str.contains("ct_marker_score_")].max(axis=1)
@@ -129,6 +154,9 @@ class DeconV():
         self.sadata.var["ct_marker_abs_score_mu"] = marker_abs_score_mu
         self.sadata.var["ct_marker_abs_score_max"] = marker_abs_score_max
         self.sadata.var["ct_marker_abs_score_min"] = marker_abs_score_min
+        self.sadata.var["log_marker_score_mu"] = np.log1p(marker_abs_score_mu)
+        self.sadata.var["log_marker_score_max"] = np.log1p(marker_abs_score_max)
+        self.sadata.var["log_marker_score_min"] = np.log1p(marker_abs_score_min)
 
         marker_pval_mu = self.sadata.var.loc[:, self.sadata.var.columns.str.contains("ct_marker_pval_")].mean(axis=1)
         marker_pval_max = self.sadata.var.loc[:, self.sadata.var.columns.str.contains("ct_marker_pval_")].max(axis=1)
@@ -182,22 +210,22 @@ class DeconV():
         # self.sadata.var["gene_scale"] = self.badata
 
 
-    def filter_outliers(self, dispersion_lims=(-np.inf, np.inf), dropout_mu_lim=2, dropout_lim=0.95, marker_zscore_lim=1.0):
+    def filter_outliers(self, dispersion_lims=(-np.inf, np.inf), dropout_mu_lim=2, dropout_lim=1.0, marker_zscore_lim=1.0, pseudobulk_lims=(-10,10)):
         marker_zscore_lim = self.sadata.var["ct_marker_abs_score_max"].max() * marker_zscore_lim
 
         self.sadata.var["dispersion_outlier"] = (self.sadata.var["dispersion_residual"] < dispersion_lims[0]) | (self.sadata.var["dispersion_residual"] > dispersion_lims[1])
         self.sadata.var["dropout_outlier"] = (self.sadata.var["dropout/mu"] > dropout_mu_lim) | (self.sadata.var["dropout"] > dropout_lim)
+        self.sadata.var["pseudobulk_outlier"] = (self.sadata.var["log_bulk_residual"] < pseudobulk_lims[0]) | (self.sadata.var["log_bulk_residual"] > pseudobulk_lims[1])
 
         self.sadata.var["outlier"] = self.sadata.var["dispersion_outlier"] | self.sadata.var["dropout_outlier"]
         self.sadata.var.loc[self.sadata.var["ct_marker_abs_score_max"] > marker_zscore_lim, "outlier"] = False
 
 
-    def sub_cluster(self, leiden_res=0.1, n_neighbors=15, n_pcs=None):
+    def sub_cluster(self, leiden_res=0.1):
         self.sadata.obs["sub_type"] = ""
 
         for cell_type in self.cell_types:
             adata = self.sadata[self.sadata.obs[self.params["cell_type_key"]] == cell_type]
-            sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=n_pcs, random_state=0)
             res = sc.tl.leiden(adata, resolution=leiden_res, copy=True, key_added="sub_type", random_state=0).obs["sub_type"]
             self.sadata.obs.loc[res.index, "sub_type"] = res.values
             self.sadata.obs.loc[res.index, "sub_type"] = self.sadata.obs.loc[res.index, "sub_type"].apply(lambda x: f"{cell_type}_{x}")
@@ -207,41 +235,42 @@ class DeconV():
             self.n_labels = len(self.sub_types)
 
 
-    def init_dataset(self, use_outliers=True):
+    def init_dataset(self, adata=None, use_outliers=True, gene_weight_key=None, plot_gene_weight_hist=True):
+        if adata is None:
+            adata = self.sadata
+
         self.X = []
-        # print(self.sub_types)
-        # print(self.use_sub_types)
-        # print(self.cell_types)
+
         for i, cell_type in enumerate(self.sub_types if self.use_sub_types else self.cell_types):
-            # print(f"{i} - {cell_type}")
             if use_outliers:
-                _x = self.sadata[self.sadata.obs[self.label_key] == cell_type, :].layers[self.params['layer']]
+                _x = adata[adata.obs[self.label_key] == cell_type, :].layers[self.params['layer']]
             else:
-                _x = self.sadata[self.sadata.obs[self.label_key] == cell_type, ~self.sadata.var["outlier"]].layers[self.params['layer']]
+                _x = adata[adata.obs[self.label_key] == cell_type, ~adata.var["outlier"]].layers[self.params['layer']]
 
             self.X.append(torch.tensor(_x))
 
         if use_outliers:
             self.Y = torch.tensor(self.badata.layers[self.params['layer']])
         else:
-            self.Y = torch.tensor(self.badata[:, ~self.sadata.var["outlier"]].layers[self.params['layer']])
+            self.Y = torch.tensor(self.badata[:, ~adata.var["outlier"]].layers[self.params['layer']])
 
         assert self.X[0].shape[1] == self.Y.shape[1], f"{self.X[0].shape} != {self.Y.shape}"
         self.n_bulk_samples = self.Y.shape[0]
-
         self.n_used_genes = self.Y.shape[1]
 
         # Gene weights
-        if self.use_gene_weights != None:
-            self.gene_weights = torch.tensor(self.sadata[self.sadata.obs[self.label_key] == cell_type, ~self.sadata.var["outlier"] | use_outliers].var["weight"].values)
-            self.gene_weights = self.gene_weights.max() - self.gene_weights
-            self.gene_weights = self.gene_weights / self.gene_weights.max()
+        if gene_weight_key is not None:
+            assert gene_weight_key in adata.var.columns, f"Key: {gene_weight_key} not found in sadata.var"
+            self.gene_weights = torch.tensor(adata[:, ~self.sadata.var["outlier"] | use_outliers].var[gene_weight_key].values)
+            if "pval" in gene_weight_key:
+                self.gene_weights = 1 - self.gene_weights
+            self.gene_weights = (self.gene_weights - self.gene_weights.min()) / (self.gene_weights.max() - self.gene_weights.min())
+            if plot_gene_weight_hist:
+                pl.gene_weight_hist(self.gene_weights, gene_weight_key)
         else:
             self.gene_weights = None
 
         # Normalising constant for loss function (makes loss comparable between datasets)
-        # self.normalising_constant = 1.0 / torch.tensor(self.badata[:, (~self.sadata.var["outlier"] | use_outliers)].layers["counts"].sum(0) / self.sadata[:, (~self.sadata.var["outlier"] | use_outliers)].layers["counts"].sum(0))
-        # self.normalising_constant = torch.tensor(1.0 / self.badata[:, (~self.sadata.var["outlier"] | use_outliers)].layers["counts"].sum(axis=1))
         self.normalising_constant = 1.0 / torch.tensor(np.nanmean(np.nan_to_num(self.sadata.layers["counts"].sum(0) / self.badata.layers["counts"], posinf=np.nan), axis=1))
 
 
@@ -251,9 +280,9 @@ class DeconV():
         self.loc = torch.empty(self.n_used_genes, self.n_labels)
         self.scale = torch.empty(self.n_used_genes, self.n_labels)
 
-        for cell_type in range(self.n_labels):
-            self.loc[:, cell_type] = self.X[cell_type].mean(0)
-            self.scale[:, cell_type]  = self.X[cell_type].std(0)
+        for i, _ in enumerate(self.cell_types):
+            self.loc[:, i] = self.X[i].mean(0)
+            self.scale[:, i]  = self.X[i].std(0)
         
         assert torch.isnan(self.loc).sum() == 0, "NaN found in loc"
         assert torch.isnan(self.scale).sum() == 0, "NaN found in scale"
@@ -363,6 +392,10 @@ def preprocess(sc_adata, bulk_adata):
     sc.pp.normalize_total(bulk_adata, target_sum=None)
     bulk_adata.layers["ncounts"] = bulk_adata.X.copy()
     sc.pp.log1p(bulk_adata)
+
+    sc_adata.layers["centered"] = sc_adata.layers["counts"] - sc_adata.layers["counts"].mean(axis=0)
+    sc_adata.layers["logcentered"] = sc_adata.X - sc_adata.X.mean(axis=0)
+
 
     if params["n_top_genes"] > 0:
         sc.pp.highly_variable_genes(sc_adata, min_mean=0.01, max_mean=3, min_disp=0.5, subset=True, n_top_genes=params["n_top_genes"])

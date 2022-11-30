@@ -7,3 +7,12 @@ dependencies:
   - python=3.8
   - pip
   - flask
+  - tqdm
+  - pyyaml
+  - pytorch
+  - torchvision
+  - torchaudio
+  - cpuonly
+  - matplotlib
+  - seaborn
+  - scanpy

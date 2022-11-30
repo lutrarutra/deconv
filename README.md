@@ -6,7 +6,10 @@
 ## 2. Activate environment
 `conda activate deconv`
 
-## 3. Change parameters in 'params.yaml'
+## 3. Install deconv
+`pip install -e .`
 
-## 4. Run the script
+## 4. Change parameters in 'params.yaml'
+
+## 5. Run the script
 `python run.py`
