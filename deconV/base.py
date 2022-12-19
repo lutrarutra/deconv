@@ -50,6 +50,8 @@ class PSM(nn.Module):
     def forward(self, x):
         d = self.get_distribution()
 
+        x = x.round()
+
         if self.gene_weights != None:
             return (-d.log_prob(x) * self.gene_weights).mean() * self.norm
 

@@ -8,6 +8,7 @@ import time
 import warnings
 from typing import Literal
 
+import deconV.plot as pl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,10 +22,7 @@ import tqdm
 import yaml
 from matplotlib import rcParams
 
-import deconV.base
-import deconV.plot as pl
-
-params = {"jupyter": False}
+from . import base
 
 
 def fmt_c(w):
@@ -34,7 +32,6 @@ def fmt_c(w):
 class DeconV:
     def __init__(self, sc_adata, bulk_adata, cell_types, params, use_sub_types=False):
         self.params = params
-
         self.sadata = sc_adata
         self.badata = bulk_adata
         self.cell_types = cell_types
@@ -419,11 +416,12 @@ class DeconV:
 
     def _fit(self, model, y):
         if self.params["tqdm"]:
-            pbar = tqdm.tqdm(range(params["epochs"]))
+            pbar = tqdm.tqdm(range(self.params["epochs"]))
         else:
-            pbar = range(params["epochs"])
+            pbar = range(self.params["epochs"])
+        # pbar = range(self.params["epochs"])
 
-        optim = torch.optim.Adam(model.parameters(), lr=params["lr"])
+        optim = torch.optim.Adam(model.parameters(), lr=self.params["lr"])
 
         for i in pbar:
             optim.zero_grad()
@@ -447,16 +445,16 @@ class DeconV:
             print(f"Sample: {sample_i}/{self.n_bulk_samples}")
 
             if self.params["model_type"] == "normal":
-                model = core.base.NSM(
+                model = base.NSM(
                     self.loc,
                     self.scale,
                     gene_weights=self.gene_weights,
                     norm=self.normalising_constant[sample_i],
                 )
             elif self.params["model_type"] == "mse":
-                model = core.base.MSEM(self.loc)
+                model = base.MSEM(self.loc)
             elif self.params["model_type"] == "poisson":
-                model = core.base.PSM(
+                model = base.PSM(
                     self.loc,
                     gene_weights=self.gene_weights,
                     norm=self.normalising_constant[sample_i],
@@ -483,9 +481,9 @@ class DeconV:
                     model.get_mean().detach(),
                     y,
                     path=os.path.join(
-                        params["outdir"],
+                        self.params["outdir"],
                         self.params["model_type"],
-                        f"sample_{self.badata.obs.index[sample_i]}.{params['fig_fmt']}",
+                        f"sample_{self.badata.obs.index[sample_i]}.{self.params['fig_fmt']}",
                     ),
                 )
 
@@ -498,23 +496,23 @@ class DeconV:
                 pl.proportions_heatmap(
                     df,
                     path=os.path.join(
-                        params["outdir"],
+                        self.params["outdir"],
                         self.params["model_type"],
-                        f"proportions.{params['fig_fmt']}",
+                        f"proportions.{self.params['fig_fmt']}",
                     ),
                 )
 
             pl.bar_proportions(
                 df,
                 path=os.path.join(
-                    params["outdir"],
+                    self.params["outdir"],
                     self.params["model_type"],
-                    f"bar.{params['fig_fmt']}",
+                    f"bar.{self.params['fig_fmt']}",
                 ),
             )
             df.to_csv(
                 os.path.join(
-                    params["outdir"], self.params["model_type"], "proportions.csv"
+                    self.params["outdir"], self.params["model_type"], "proportions.csv"
                 ),
                 sep=",",
             )
@@ -537,7 +535,7 @@ class DeconV:
         return np.array([d[cell_type] for cell_type in self.cell_types])
 
 
-def preprocess(sc_adata, bulk_adata):
+def preprocess(sc_adata, bulk_adata, params):
 
     if params["selected_ct"] is not None:
         sc_adata.obs.loc[
