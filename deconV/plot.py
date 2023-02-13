@@ -665,17 +665,8 @@ def clustermap(
 
 
 def pseudo_bulk_plot(
-    decon,
-    hue="log_bulk_residual",
-    style=None,
-    dir=None,
-    fmt="png",
-    figsize=(8, 8),
-    dpi=80,
-    palette="seismic",
-    vmin=None,
-    vmax=None,
-    vcenter=None,
+    decon, hue="log_bulk_residual", style=None, dir=None, fmt="png",
+    figsize=(8, 8), dpi=80, palette="seismic", vmin=None, vmax=None, vcenter=None,
 ):
     if vmin == None:
         vmin = decon.sadata.var[hue].min()
@@ -689,19 +680,19 @@ def pseudo_bulk_plot(
 
     for i in range(decon.badata.shape[0]):
         f, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
-
+        # decon.sadata.var["pseudo"] = np.random.permutation(decon.sadata.var["pseudo"].values)
         sns.scatterplot(
             data=decon.sadata.var,
             x="pseudo",
             y=f"bulk_{i}",
-            c=decon.sadata.var[hue] if hue else None,
+            c=decon.sadata.var[hue] if hue is not None else None,
             style=style,
             edgecolor=(0, 0, 0, 1),
             ax=ax,
             linewidth=1,
             cmap=colormap,
             norm=normalize,
-        ).set_title(f"Sample {i}")
+        )#.set_title(f"Sample {i}")
 
         ax.plot(
             [0, decon.sadata.var[f"bulk_{i}"].max()],
@@ -771,26 +762,26 @@ def proportions_heatmap(df, path=None, figsize=(8, 0.2), dpi=100):
         plt.show()
 
 
-def scatter_check(true_df, est_df, figsize=(8, 8), dpi=100, path=None):
-    samples = true_df.index.values
-    nrows = int(np.ceil(len(samples) / 2))
+# def scatter_check(true_df, est_df, figsize=(8, 8), dpi=100, path=None):
+#     samples = true_df.index.values
+#     nrows = int(np.ceil(len(samples) / 2))
 
-    f, ax = plt.subplots(2, nrows, figsize=figsize, dpi=dpi)
-    for i, sample in enumerate(samples):
-        sns.scatterplot(
-            x=true_df.loc[sample],
-            y=est_df.loc[sample],
-            edgecolor=(0, 0, 0, 1),
-            color=(1, 1, 1, 0),
-            ax=ax[i],
-            linewidth=1,
-        )
+#     f, ax = plt.subplots(2, nrows, figsize=figsize, dpi=dpi)
+#     for i, sample in enumerate(samples):
+#         sns.scatterplot(
+#             x=true_df.loc[sample],
+#             y=est_df.loc[sample],
+#             edgecolor=(0, 0, 0, 1),
+#             color=(1, 1, 1, 0),
+#             ax=ax[i],
+#             linewidth=1,
+#         )
 
-    if path:
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()
+#     if path:
+#         plt.savefig(path, bbox_inches="tight")
+#         plt.close()
+#     else:
+#         plt.show()
 
 
 def bar_proportions(proportions_df, path=None, figsize=(0.4, 10), dpi=100):

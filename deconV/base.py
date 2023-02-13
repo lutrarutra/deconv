@@ -30,6 +30,7 @@ class PSM(nn.Module):
         self.log_cell_counts = nn.Parameter(
             torch.ones(loc.shape[1]) * torch.log(lib_size / loc.shape[1])
         )
+        # print(self.log_cell_counts)
         self.eps = torch.tensor(1e-5)
 
     def get_proportions(self):
@@ -41,6 +42,9 @@ class PSM(nn.Module):
             return torch.sum(self.log_cell_counts.exp())
 
     def get_distribution(self):
+        assert torch.isnan(self.loc).any() == False
+        assert torch.isnan(self.log_cell_counts).any() == False, self.log_cell_counts
+
         loc = torch.sum(self.loc * self.log_cell_counts.exp(), 1)
 
         assert torch.isnan(loc).sum() == 0
@@ -139,39 +143,3 @@ class MSEM(nn.Module):
 
         return F.mse_loss(loc, x)
 
-
-def create_dataset(
-    adata,
-    bulk_adata,
-    genes=None,
-    layer="counts",
-    label_key="leiden",
-    res_limits=(0.001, 1000),
-):
-    if genes is None:
-        _adata = adata.copy()
-        _bulk_adata = bulk_adata.copy()
-    else:
-        _adata = adata[:, adata.var.index.isin(genes)].copy()
-        _bulk_adata = bulk_adata[:, bulk_adata.var.index.isin(genes)].copy()
-
-    X = []
-
-    pseudo = _adata.layers[layer].sum(0)
-
-    for i, cell_type in enumerate(_adata.obs[label_key].cat.categories):
-        _x = _adata[_adata.obs[label_key] == cell_type].layers[layer]
-        X.append(torch.tensor(_x))
-
-    Y = torch.tensor(_bulk_adata.layers[layer]).squeeze()
-
-    c = torch.concat(X, dim=0)
-
-    if res_limits != None:
-        res = (pseudo / pseudo.max()) / (Y / Y.max())
-        mask = (c == 0).sum(0) / c.shape[0] < 0.2
-        X = [x[:, mask] for x in X]
-        Y = Y[mask]
-        pseudo = pseudo[mask]
-
-    return X, Y, torch.tensor(pseudo)
