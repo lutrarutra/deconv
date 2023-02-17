@@ -204,41 +204,6 @@ def dispersion_plot(
     )
 
 
-def dropout_plot(
-    decon,
-    hue="ct_marker_abs_score_max",
-    style="dropout_outlier",
-    size=None,
-    path=None,
-    fmt="png",
-    figsize=(8, 8),
-    dpi=100,
-    separate_ct=False,
-    xlim=None,
-    ylim=(-0.1, 1.1),
-    palette=None,
-):
-
-    plot(
-        decon,
-        x="nanmu",
-        y="dropout",
-        logx=True,
-        hue=hue,
-        style=style,
-        size=size,
-        path=path,
-        fmt=fmt,
-        figsize=figsize,
-        dpi=dpi,
-        k_poly_fit=2,
-        separate_ct=separate_ct,
-        palette=palette,
-        ylim=ylim,
-        xlim=xlim,
-    )
-
-
 def gene_weight_hist(
     weights, xlabel, logy=False, fig_path=None, figsize=(8, 8), dpi=80
 ):
@@ -664,63 +629,6 @@ def clustermap(
     rcParams["axes.grid"] = _grid
 
 
-def pseudo_bulk_plot(
-    decon, hue="log_bulk_residual", style=None, dir=None, fmt="png",
-    figsize=(8, 8), dpi=80, palette="seismic", vmin=None, vmax=None, vcenter=None,
-):
-    if vmin == None:
-        vmin = decon.sadata.var[hue].min()
-    if vmax == None:
-        vmax = decon.sadata.var[hue].max()
-    if vcenter == None:
-        vcenter = (vmax + vmin) / 2.0
-
-    normalize = matplotlib.colors.TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
-    colormap = palette
-
-    for i in range(decon.badata.shape[0]):
-        f, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
-        # decon.sadata.var["pseudo"] = np.random.permutation(decon.sadata.var["pseudo"].values)
-        sns.scatterplot(
-            data=decon.sadata.var,
-            x="pseudo",
-            y=f"bulk_{i}",
-            c=decon.sadata.var[hue] if hue is not None else None,
-            style=style,
-            edgecolor=(0, 0, 0, 1),
-            ax=ax,
-            linewidth=1,
-            cmap=colormap,
-            norm=normalize,
-        )#.set_title(f"Sample {i}")
-
-        ax.plot(
-            [0, decon.sadata.var[f"bulk_{i}"].max()],
-            [0, decon.sadata.var[f"bulk_{i}"].max()],
-            label="y=x",
-            c="royalblue",
-        )
-
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        ax.set_xlabel("Pseudo Bulk")
-        ax.set_ylabel("Bulk")
-
-        if hue:
-            scalarmappaple = matplotlib.cm.ScalarMappable(norm=normalize, cmap=colormap)
-            scalarmappaple.set_array(decon.sadata.var[hue])
-            f.colorbar(scalarmappaple, fraction=0.05, pad=0.01, shrink=0.5)
-
-        # plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-
-        if dir:
-            mkdir(dir)
-            plt.savefig(os.path.join(dir, f"pseudobulk_{i}.{fmt}"), bbox_inches="tight")
-            plt.close()
-        else:
-            plt.show()
-
-
 def prediction_plot(mean, Y, path=None, figsize=(8, 8), dpi=100):
     plt.style.use("ggplot")
 
@@ -827,9 +735,11 @@ def scatter_check(
     df1 = pd.melt(
         true_df.reset_index(), id_vars=["index"], value_name="true_proportions"
     ).set_index(["index", "variable"])
+
     df2 = pd.melt(
         est_df.reset_index(), id_vars=["index"], value_name="est_proportions"
     ).set_index(["index", "variable"])
+
     df = pd.concat([df1, df2], axis=1).reset_index()
     df.rename(columns={"index": "sample", "variable": "cell_type"}, inplace=True)
 
