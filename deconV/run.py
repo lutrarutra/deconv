@@ -1,78 +1,110 @@
-import glob, tqdm, time, os, argparse, yaml, warnings
-from typing import Literal
+import deconV as dv
+import scout
 
-# Custom tools
-import sys
-
-from base import NSM, MSEM
-import plot as pl
-
-import deconV as dV
+import time, argparse, os, yaml
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib import rcParams
 
 import pandas as pd
 import numpy as np
 import scanpy as sc
-import tqdm
 
-def main(args):
-    print("Reading scRNA-seq data...")
-    sadata = dV.read_data(os.path.join(params["indir"], args.sc))
+import scout
+
+
+def main(params):
+    sadata = dv.tl.read_data(params["ref_file"])
     print(f"scRNA-seq data - cells: {sadata.shape[0]}, genes: {sadata.shape[1]}")
-
-    if args.bulk:
-        print("Reading bulk data...")
-        badata = dV.read_data(os.path.join(params["indir"], args.bulk), is_bulk=True, transpose_bulk=args.transpose_bulk)
-        print(f"bulk RNA-seq data - samples: {badata.shape[0]}, genes: {badata.shape[1]}")
-    else:
-        print("No bulk RNA-seq data provided, creating pseudo bulk data")
-        badata = sc.AnnData(sadata.X.sum(0).reshape(1,-1), var=sadata.var)
 
     print("Reading pheno data...")
-    pheno_df = pd.read_csv(os.path.join(params["indir"], args.pheno), sep="\t" if args.pheno.endswith(".tsv") else ",", index_col=params["index_col"])
+    pheno_df = pd.read_csv(params["ref_annot_file"], sep="\t", index_col=0)
     pheno_df.index.name = None
 
-    sadata.obs = pd.concat([sadata.obs, pheno_df], axis=1)
-    assert params["cell_type_key"] in sadata.obs.columns, f"{params['cell_type_key']} not in obs columns"
-    sadata.obs[params["cell_type_key"]] = sadata.obs[params["cell_type_key"]].astype(str)
+    common_cells = list(set(pheno_df.index.tolist()) & set(sadata.obs_names.tolist()))
+    sadata = sadata[common_cells, :].copy()
+    pheno_df = pheno_df.loc[common_cells, :].copy()
+    sadata.obs[params["label_key"]] = pheno_df[params["label_key"]].tolist()
+    sadata.obs.groupby(params["label_key"]).size()
+
+    print("Reading bulk data...")
+    bulk_df = pd.read_csv(params["bulk_file"], sep="\t", index_col=None)
+    if bulk_df.iloc[:, 0].dtype == "O":
+        bulk_df.set_index(bulk_df.columns[0], inplace=True)
+    print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
+
+    if params["selected_ct"] is not None and len(params["selected_ct"]) > 0:
+        sadata = sadata[sadata.obs[params["label_key"]].astype("str").isin(params["selected_ct"]), :].copy()
+
+    sadata.obs[params["label_key"]] = sadata.obs[params["label_key"]].astype("category")
+    sadata.obs.groupby(params["label_key"]).size()
 
     print("Preprocessing data...")
-    sadata, badata = dV.preprocess(sadata, badata)
-    print("After preprocessing:")
-    print(f"scRNA-seq data - cells: {sadata.shape[0]}, genes: {sadata.shape[1]}")
-    print(f"bulk RNA-seq data - samples: {badata.shape[0]}, genes: {badata.shape[1]}")
+    sc.pp.filter_cells(sadata, min_genes=params["min_genes"])
+    sc.pp.filter_genes(sadata, min_cells=params["min_cells"])
 
-    assert sadata.shape[1] == badata.shape[1], "scRNA-seq and bulk RNA-seq data have different number of genes"
+    adata = dv.tl.combine(sadata, bulk_df)
+    scout.tl.scale_log_center(
+        adata, target_sum=None if params["target_sum"] == -1 else params["target_sum"],
+        exclude_highly_expressed=params["exclude_highly_expressed"]
+    )
 
-    pl.umap_plot(sadata, params["label_key"], fmt=params["fig_fmt"])
-    pl.dispersion_plot(sadata, path=params["outdir"], layer="counts", fmt=params["fig_fmt"])
-
-    cell_types = list(sadata.obs[params['label_key']].unique())
+    if params["use_sub_type"]:
+        sc.pp.pca(adata)
+        sc.pp.neighbors(adata)
+        scout.tl.sub_cluster(adata, params["label_key"])
     
-    decon = dV.DeconV(sadata, badata, cell_types, params)
 
-    if params["plot_pseudo_bulk"]:
-        print("Plottting bulk vs. pseudo bulk...")
-        pl.pseudo_bulk_plot(
-            decon.sadata, decon.bulk_sample_cols,
-            dir=os.path.join(params["outdir"], "pseudo_bulk") if not params["jupyter"] else None,
-            fmt=params["fig_fmt"], figsize=params["figsize"], dpi=params["dpi"]
-        )
+    decon = dv.DeconV(
+        adata, cell_type_key=params["label_key"],
+        sub_type_key="sub_type" if params["use_sub_type"] else None,
+        layer=params["layer"]
+    )
 
-    print("Deconvolving...")
-    decon.deconvolute()
-    
+    decon.filter_outliers(
+        dropout_factor_quantile=params["dropout_factor_quantile"],
+        pseudobulk_lims=params["pseudobulk_lims"],
+        aggregate="max"
+    )
+
+    decon.init_dataset(
+        weight_type=params["weight_type"], weight_agg=params["weight_agg"],
+        inverse_weight=False, log_weight=False, quantiles=params["weight_quantiles"]
+    )
+
+    os.mkdir(params["outdir"])
+
+    dv.pl.gene_weight_hist(
+        decon.adata.varm["gene_weights"],
+        f"Gene Weight ({params['weight_type']} | {params['weight_agg']})",
+        logy=False,
+        path=os.path.join(params["outdir"], f"gene_weight_hist.{params['fig_fmt']}"),
+    )
+
+    est_df = decon.deconvolute(
+        model_type="poisson",
+        num_epochs=5000,
+        lr=0.01,
+        use_outlier_genes=False, plot=False
+    )
+
+    est_df.to_csv(os.path.join(params["outdir"], "estimate.tsv"), sep="\t")
+
+    if params["true_proportions"] is not None:
+        true_df = pd.read_csv(params["true_proportions"], sep="\t", index_col=0)
+        print("Evaluating deconvolution...")
+        dv.pl.scatter_check(true_df, est_df, style="sample", path=os.path.join(params["outdir"], f"scatter_check.{params['fig_fmt']}"))
+
 
 if __name__ ==  "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--sc", type=str, help="Path to scRNA-seq data file (.csv/.tsv)", required=True)
-    parser.add_argument("-b", "--bulk", type=str, help="Path to bulk RNA-seq data file (.csv/.tsv)", required=False)
-    parser.add_argument("-p", "--pheno", type=str, help="Path to pheno data table file (.csv/.tsv)", required=True)
     parser.add_argument("-c", "--config", type=str, help="Path to parameters/config file (.yaml/.yml)", required=True)
+    
+    parser.add_argument("-s", "--sc", type=str, help="Path to scRNA-seq data file (.csv/.tsv)", default=None, required=False)
+    parser.add_argument("-b", "--bulk", type=str, help="Path to bulk RNA-seq data file (.csv/.tsv)", default=None, required=False)
+    parser.add_argument("-p", "--pheno", type=str, help="Path to annotation data table file (.csv/.tsv)", default=None, required=False)
     parser.add_argument("-o", "--outdir", type=str, help="Output directory", required=False, default="out")
-    parser.add_argument("-i", "--indir", type=str, help="Input directory", required=False, default="")
-    parser.add_argument("-t", "--ptrue", type=str, help="Path to true cell proportions file (.csv/.tsv)", required=False)
-    parser.add_argument("--transpose_bulk", action="store_true", help="Transpose bulk data")
-    args = parser.parse_args()
+    parser.add_argument("-t", "--true", type=str, help="True proportions", required=False, default=None)
 
     args = parser.parse_args()
 
@@ -80,13 +112,21 @@ if __name__ ==  "__main__":
     with open(args.config, "r") as f:
         params = yaml.safe_load(f)
 
+    if args.sc is not None:
+        params["ref_file"] = args.sc
+    
+    if args.bulk is not None:
+        params["bulk_file"] = args.bulk
+
+    if args.pheno is not None:
+        params["ref_annot_file"] = args.pheno
+
     params["outdir"] = os.path.join(args.outdir, time.strftime('%Y%m%d-%H%M%S'))
-    sc.settings.figdir = params["outdir"]
-    params["indir"] = args.indir
-    print("Output directory: ", params["outdir"])
+
+    params["true_proportions"] = args.true
 
     # convert selected_ct to string (QoL)
     if params["selected_ct"]:
         params["selected_ct"] = list(map(str, params["selected_ct"]))
 
-    main(args)
+    main(params)

@@ -1,46 +1,57 @@
 # Pipeline parameters
 
+ref_file: "data/GSE136148/sc.tsv"
+ref_annot_file: "data/GSE136148/pdata.tsv"
+bulk_file: "data/GSE136148/bulk.tsv"
+
 # Cell-type label identifying column in pheno data table
 label_key: "cellType"
-# Layer in adata.layers to use for deconvolution ("ncounts" - normalized mRNA counts, "counts" - raw mRNA counts)
-layer: "ncounts"
 # Index identifying barcode column in pheno data table
 index_col: 0
 # Selected cell types, if empty, all cell types found in scRNA-seq are selected
 selected_ct:
-  - alpha
-  - beta
-  - delta
-  - gamma
+  - 0
+  - 1
+  - 2
 
-# Model type: ("prob" - probabilistic, "mse" - linear with mse loss)
-model_type: "prob"
-
-# ignore other cell types not specified in 'selected_ct'
-ignore_others: true
-
-# Top n variable genes, use all common genes if '-1'
-n_top_genes: -1
-
-# Plot pseudo bulk vs. bulk scatter plot per sample
-plot_pseudo_bulk: true
+use_sub_type: False
 
 # -------------------------------------------- #
-
 # Preprocessing
 
+# QC filtering
+min_genes: 200
+min_cells: 3
+
+# Layer in adata.layers to use for deconvolution ("ncounts" - normalized mRNA counts, "counts" - raw mRNA counts)
+layer: "ncounts"
+
+# Normalization (-1 = None)
+target_sum: -1
+exclude_highly_expressed: True
+
+
+# Gene weights
+weight_type: "abs_score"
+weight_agg: "min"
+weight_quantiles: [0, 1]
 
 # -------------------------------------------- #
+# Outlier gene filtering
 
+# min, max, mean (min best)
+dropout_factor_quantile: 0.9
+pseudobulk_lims: [-10, 10]
+signature_quantiles: [0, 1]
+
+# -------------------------------------------- #
 # Optimization
 
 lr: 0.01
 epochs: 5000
 
 # -------------------------------------------- #
+# Output
 
-# I/O
-
+# png, pdf
 fig_fmt: "png"
-
-# -------------------------------------------- #

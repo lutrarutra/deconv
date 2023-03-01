@@ -205,7 +205,7 @@ def dispersion_plot(
 
 
 def gene_weight_hist(
-    weights, xlabel, logy=False, fig_path=None, figsize=(8, 8), dpi=80
+    weights, xlabel, logy=False, path=None, figsize=(8, 8), dpi=80
 ):
     f, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
@@ -215,10 +215,10 @@ def gene_weight_hist(
     if logy:
         ax.set_yscale("log")
 
-    if fig_path:
-        plt.savefig(fig_path, bbox_inches="tight")
-
-    plt.show()
+    if path:
+        plt.savefig(path, bbox_inches="tight")
+    
+    return f, ax
 
 
 def marker_plot(decon, top_n_genes=20, show=False, fmt="png", figsize=(8, 8), dpi=100):
@@ -727,6 +727,21 @@ def bar_proportions(proportions_df, path=None, figsize=(0.4, 10), dpi=100):
         plt.close()
     else:
         plt.show()
+
+def rmse(true_df, est_df):
+    df1 = pd.melt(
+        true_df.reset_index(), id_vars=["index"], value_name="true_proportions"
+    ).set_index(["index", "variable"])
+
+    df2 = pd.melt(
+        est_df.reset_index(), id_vars=["index"], value_name="est_proportions"
+    ).set_index(["index", "variable"])
+
+    df = pd.concat([df1, df2], axis=1).reset_index()
+    df.rename(columns={"index": "sample", "variable": "cell_type"}, inplace=True)
+
+    rmse = ((df["true_proportions"] - df["est_proportions"]) ** 2).mean() ** 0.5
+    return rmse
 
 
 def scatter_check(
