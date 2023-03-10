@@ -5,10 +5,10 @@ def fmt_c(w):
     return " ".join([f"{v:.2f}" for v in w])
 
 
-def combine(sc_adata, bulk_df):
+def combine(adata, bulk_df):
     # Checks if bulk genes are given as columns or as rows
-    common_genes = np.intersect1d(sc_adata.var_names, bulk_df.index.astype(str))
-    common_genes_t = np.intersect1d(sc_adata.var_names, bulk_df.columns.astype(str))
+    common_genes = np.intersect1d(adata.var_names, bulk_df.index.astype(str))
+    common_genes_t = np.intersect1d(adata.var_names, bulk_df.columns.astype(str))
 
     if len(common_genes) < len(common_genes_t):
         common_genes = common_genes_t
@@ -16,7 +16,7 @@ def combine(sc_adata, bulk_df):
 
     assert (len(common_genes) > 0), "No common genes found between bulk and single cell data"
 
-    adata = sc_adata[:, common_genes].copy()
+    adata = adata[:, common_genes].copy()
     adata.varm["bulk"] = bulk_df.loc[common_genes].values.astype(np.float32)
     
     if "counts" not in adata.layers.keys():

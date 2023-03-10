@@ -782,3 +782,45 @@ def scatter_check(
         plt.close()
     else:
         plt.show()
+
+
+def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, path=None, log=False):
+    rmse = ((df["true"] - df["est"]) ** 2).mean() ** 0.5
+    mad = (df["true"] - df["est"]).abs().mean()
+    r = df["true"].corr(df["est"])
+    
+    f, ax = plt.subplots(figsize=(8, 8), dpi=100)
+
+    ax.errorbar(
+        df["true"], df["est"], yerr=df["sd"],
+        fmt=",", alpha=.7, zorder=1, c="#c3c3c3",
+        label="+/- sd", capsize=2
+    )
+
+    sns.scatterplot(
+        data=df,
+        x="true",
+        y="est",
+        hue="cell_type",
+        style="sample",
+        edgecolor=(0, 0, 0, 0.8),
+        color=(1, 1, 1, 0),
+        linewidth=1,
+        zorder=2,
+    ).set_title(f"RMSE: {rmse:0.2f} MAD: {mad:0.2f} R: {r:0.2f}")
+
+    ax.set_xlabel("True Proportion")
+    ax.set_ylabel("Estimated Proportion")
+    if log:
+        ax.set_yscale("log")
+        ax.set_xscale("log")
+
+
+    ax.plot([0, 1], [0, 1], color="royalblue", label="y=x")
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+
+    if path:
+        plt.savefig(path, bbox_inches="tight")
+        plt.close()
+    else:
+        plt.show()
