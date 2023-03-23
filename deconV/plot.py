@@ -790,12 +790,13 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
     r = df["true"].corr(df["est"])
     
     f, ax = plt.subplots(figsize=(8, 8), dpi=100)
-
-    ax.errorbar(
-        df["true"], df["est"], yerr=df["sd"],
-        fmt=",", alpha=.7, zorder=1, c="#c3c3c3",
-        label="+/- sd", capsize=2
-    )
+    
+    if "min" in df.columns:
+        ax.errorbar(
+            df["true"], df["est"], yerr=df[["min", "max"]].values.T,
+            fmt=",", alpha=.7, zorder=1, c="#c3c3c3",
+            label="+/- sd", capsize=2
+        )
 
     sns.scatterplot(
         data=df,

@@ -151,6 +151,33 @@ class PSM(BaseModel):
         return l
     
 
+class PSM(BaseModel):
+    def __init__(self, n_cell_types, gene_weights=None, log=False):
+        super(PSM, self).__init__(n_cell_types, gene_weights, log_loss=False)
+        if log:
+            print("Log loss is not supported for Poisson regression. Setting log_loss=False")
+
+    def process_batch(self, mu_batch, scale_batch, bulk_batch):
+        self.optim.zero_grad()
+        l = self(mu_batch)
+
+        loss = F.poisson_nll_loss(l, bulk_batch.round(), log_input=False, full=True, reduction="none", reduce=None)
+
+        if self.gene_weights is not None:
+            loss = loss * self.gene_weights
+        loss = loss.sum()
+
+        loss.backward()
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.00001)
+        self.optim.step()
+        return loss.item()
+
+    def forward(self, mu):
+        l = torch.sum(mu * self.log_cell_counts.exp(), dim=1)
+        assert torch.isnan(l).any() == False
+        return l
+    
+
 class NSM(BaseModel):
     def __init__(self, n_cell_types, gene_weights=None, log=False):
         super(NSM, self).__init__(n_cell_types, gene_weights, log_loss=log)
