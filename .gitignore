@@ -1,5 +1,8 @@
 *.pyc
 __pycache__/
 .vscode/
+data/
+test/
+temp/
 node_modules/
 *.egg-info/
