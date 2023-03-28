@@ -66,7 +66,7 @@ def read_inputs(indir):
     # sc.pp.highly_variable_genes(adata, n_top_genes=10000, subset=True)
 
 
-def run_benchmark(outdir, adata, true_df):
+def run_benchmark(outdir, adata, true_df, device):
     ps = list(itertools.product(*PARAMS.values()))
 
     for i, values in enumerate(ps):
@@ -99,7 +99,8 @@ def run_benchmark(outdir, adata, true_df):
             adata, cell_type_key="labels",
             dropout_type=dropout_type,
             model_type=model_type, sub_type_key=None,
-            layer=layer
+            layer=layer,
+            device=device
         )
 
         decon.fit_reference()
@@ -109,7 +110,7 @@ def run_benchmark(outdir, adata, true_df):
         decon.check_fit(path=os.path.join(out_dir, f"ref_fit_{suffix}.pdf"))
         plt.close()
 
-        proportions = decon.deconvolute(model_dropout=bulk_dropout)
+        proportions = decon.deconvolute(model_dropout=bulk_dropout).cpu()
         pd.DataFrame(proportions, index=adata.uns["bulk_samples"], columns=decon.cell_types).to_csv(
             os.path.join(out_dir, f"proportions_{suffix}.tsv"), sep="\t"
         )
@@ -124,7 +125,7 @@ def run_benchmark(outdir, adata, true_df):
             dv.pl.prediction_plot(decon, i, os.path.join(out_dir, "pseudo", f"sample_{i}_{suffix}.pdf"))
             plt.close()
 
-        decon.deconvolution_module.save_model(os.path.join(out_dir, f"model_{suffix}"))
+        # decon.deconvolution_module.save_model(os.path.join(out_dir, f"model_{suffix}"))
 
         with open(os.path.join(outdir, "done.json"), "w") as f:
             json.dump(done, f)
@@ -137,6 +138,10 @@ if __name__ ==  "__main__":
     args = parser.parse_args()
 
     adata, true_df = read_inputs(args.indir)
-    run_benchmark(args.outdir, adata, true_df)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+
+    run_benchmark(args.outdir, adata, true_df, device)
 
 

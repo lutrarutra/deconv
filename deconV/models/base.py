@@ -165,7 +165,7 @@ class Base(ABC):
             os.makedirs(dir)
         
         with open(os.path.join(dir, "log_concentrations.npy"), "wb") as f:
-            np.save(f, self.log_concentrations.numpy())
+            np.save(f, self.log_concentrations.cpu().numpy())
 
         with open(os.path.join(dir, "ref.pkl"), "wb") as f:
             params = self.params
