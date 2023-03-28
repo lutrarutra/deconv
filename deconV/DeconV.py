@@ -62,7 +62,7 @@ class DeconV:
         elif self.model_type == "nb":
             self.deconvolution_module = models.NB(self.adata, self.label_key, dropout_type=dropout_type, device=device)
 
-    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True):
+    def fit_reference(self, lr=0.1, lrd=0.995, num_epochs=500, batch_size=None, seed=None, pyro_validation=True):
         self.deconvolution_module.fit_reference(
             lr=lr, lrd=lrd,
             num_epochs=num_epochs,
