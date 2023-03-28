@@ -24,16 +24,6 @@ class Gamma(Base):
 
 
     def ref_model(self, sc_counts, labels):
-        alpha = pyro.param(
-            "alpha", self.alpha0,
-            dist.constraints.positive
-        )
-
-        beta = pyro.param(
-            "beta", self.beta0,
-            dist.constraints.positive
-        )
-
         if self.ref_dropout_type == "separate":
             dropout_logits = pyro.param(
                 "dropout_logits",
@@ -51,6 +41,16 @@ class Gamma(Base):
             dropout_logits = dropout_logits.T
         elif self.ref_dropout_type is not None:
             raise ValueError("Unknown dropout type")
+
+        alpha = pyro.param(
+            "alpha", self.alpha0,
+            dist.constraints.positive
+        )
+
+        beta = pyro.param(
+            "beta", self.beta0,
+            dist.constraints.positive
+        )
         
         with pyro.plate("labels", self.n_labels, device=self.device):
             with pyro.plate("genes", self.n_genes, device=self.device):

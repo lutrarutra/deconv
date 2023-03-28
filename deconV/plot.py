@@ -11,8 +11,9 @@ from matplotlib import rcParams
 from scipy.cluster.hierarchy import dendrogram
 from sklearn.cluster import AgglomerativeClustering, KMeans
 
-from deconV.base import mkdir
-
+def mkdir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
 def umap_plot(
     decon,

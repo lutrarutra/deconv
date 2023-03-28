@@ -227,3 +227,4 @@ class NB(Base):
         ax.hist(x, bins=bins, density=True, alpha=0.6, color='orange')
         ax.axvline(gex.mean(), color='royalblue')
         return ax
+    

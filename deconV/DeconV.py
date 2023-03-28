@@ -3,7 +3,6 @@ from typing import Literal
 
 from . import plot as pl
 from . import tools as tl
-from . import base
 
 import numpy as np
 import pandas as pd

@@ -23,7 +23,6 @@ class Beta(Base):
         self.alpha0 = 1.0 * torch.ones(self.n_genes, self.n_labels, device=self.device)
         self.beta0 = 50.0 * torch.ones(self.n_genes, self.n_labels, device=self.device)
 
-
     def ref_model(self, sc_counts, labels):
         if self.ref_dropout_type == "separate":
             dropout_logits = pyro.param(

@@ -127,12 +127,6 @@ class Base(ABC):
             raise ValueError("You must deconvolute first")
         return self.log_cell_counts.exp() 
 
-    def render_reference_model(self):
-        pass
-
-    def render_deconvolution_model(self):
-        pass
-
     @abstractmethod
     def ref_model(self, sc_counts, labels):
         pass
