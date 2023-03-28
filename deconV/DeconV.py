@@ -13,11 +13,26 @@ import torch
 import torch.distributions as D
 import torch.nn as nn
 import torch.nn.functional as F
+
+import pyro
+import pyro.distributions as dist
+
+from matplotlib import pyplot as plt
+
 import tqdm
+
+from . import models
 
 import scout
 class DeconV:
-    def __init__(self, adata, cell_type_key, layer="ncounts", sub_type_key=None):
+    def __init__(
+            self, adata, cell_type_key,
+            model_type: Literal["static", "beta", "gamma", "lognormal", "nb"] = "static",
+            dropout_type: Literal["separate", "shared", None] = "separate",
+            layer="counts", sub_type_key=None, device="cpu"
+        ):
+        self.model_type = model_type
+        
         self.use_sub_types = sub_type_key is not None
         self.layer = layer
         self.adata = adata
@@ -36,283 +51,107 @@ class DeconV:
 
         self.n_bulk_samples = self.adata.varm["bulk"].shape[1]
 
-        self.eps = 1e-4
+        if self.model_type == "static":
+            self.deconvolution_module = models.Static(self.adata, self.label_key, dropout_type=dropout_type, device=device)
+        elif self.model_type == "beta":
+            self.deconvolution_module = models.Beta(self.adata, self.label_key, dropout_type=dropout_type, device=device)
+        elif self.model_type == "gamma":
+            self.deconvolution_module = models.Gamma(self.adata, self.label_key, dropout_type=dropout_type, device=device)
+        elif self.model_type == "lognormal":
+            self.deconvolution_module = models.LogNormal(self.adata, self.label_key, dropout_type=dropout_type, device=device)
+        elif self.model_type == "nb":
+            self.deconvolution_module = models.NB(self.adata, self.label_key, dropout_type=dropout_type, device=device)
 
-        self.init_stats()
-        self.adata.var["outlier"] = False
-
-    def init_stats(self):
-        # Neighbors for clustering
-        # if "X_pca" not in self.adata.obsm.keys():
-        #     print("Computing PCA...")
-        #     sc.pp.pca(self.adata)
-        # if "distances" not in self.adata.obsp.keys():
-        #     print("Computing neighbors...")
-        #     sc.pp.neighbors(self.adata, random_state=0)
-        # if "de" not in self.adata.uns.keys() or self.label_key not in self.adata.uns["de"].keys():
-        # scout.tl.rank_marker_genes(self.adata, groupby=self.label_key)
-        pass
-
-
-    def filter_outliers(
-        self,
-        dropout_factor_quantile=0.99,
-        pseudobulk_lims=(-10, 10),
-        aggregate: Literal["mean", "median", "geom_mean", "min", "max"] = "mean"
-    ):
-        # self.adata.var["dispersion_outlier"] = (
-        #     self.adata.var["dispersion_residual"] < dispersion_lims[0]
-        # ) | (self.adata.var["dispersion_residual"] > dispersion_lims[1])
-        if aggregate == "mean":
-            dropout_factor = self.adata.varm[f"dropout_weight_{self.label_key}"].mean(1)
-        elif aggregate == "median":
-            dropout_factor = np.median(self.adata.varm[f"dropout_weight_{self.label_key}"], 1)
-        elif aggregate == "geom_mean":
-            dropout_factor = np.exp(np.mean(np.log(self.adata.varm[f"dropout_weight_{self.label_key}"]+1e-4), 1))
-        elif aggregate == "min":
-            dropout_factor = self.adata.varm[f"dropout_weight_{self.label_key}"].min(1)
-        elif aggregate == "max":
-            dropout_factor = self.adata.varm[f"dropout_weight_{self.label_key}"].max(1)
-
-        _lim = np.quantile(self.adata.varm[f"dropout_weight_{self.label_key}"], dropout_factor_quantile, axis=0).mean()
-
-        self.adata.varm["dropout_outlier"] = dropout_factor > _lim
-
-        # self.adata.var["dropout_outlier"] = (
-        #     dropout_factor > dropout_factor_lim
-        # )# | (self.adata.var["dropout"] > dropout_lim)
-
-        self.adata.varm["pseudobulk_outlier"] = (
-            self.adata.varm["pseudo_factor"] < pseudobulk_lims[0]
-        ) | (self.adata.varm["pseudo_factor"] > pseudobulk_lims[1])
-
-        # self.adata.var["outlier"] = (
-        #     self.adata.var["dispersion_outlier"] | self.adata.var["dropout_outlier"]
-        # )
-
-        self.adata.varm["outlier"] = (
-            (self.adata.varm["dropout_outlier"] | self.adata.varm["pseudobulk_outlier"].T).T
+    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True):
+        self.deconvolution_module.fit_reference(
+            lr=lr, lrd=lrd,
+            num_epochs=num_epochs,
+            batch_size=batch_size,
+            seed=seed,
+            pyro_validation=pyro_validation
         )
-        # self.adata.var.loc[
-        #     self.adata.var["ct_marker_abs_score_max"] > marker_zscore_lim, "outlier"
-        # ] = False
 
-    def init_dataset(
-        self, weight_type=None, quantiles=(0.05, 0.95),
-        weight_agg: Literal["min", "max", "mean", "geom_mean", "median"] = "mean", inverse_weight=False, log_weight=False,
-    ):
-        self.X = []
+    def deconvolute(self, model_dropout=True, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
+        self.deconvolution_module.deconvolute(
+            model_dropout=model_dropout,
+            bulk=bulk,
+            lr=lr, lrd=lrd,
+            num_epochs=num_epochs,
+            progress=progress
+        )
 
-        for i, cell_type in enumerate(self.labels):
-            _x = self.adata[self.adata.obs[self.label_key].cat.codes == i, :].layers[self.layer]
-            self.X.append(_x)
+        proportions = self.deconvolution_module.get_proportions()
+        if self.use_sub_types:
+            proportions = self.sum_sub_proportions(proportions)
 
-        self.Y = torch.tensor(self.adata.varm["bulk"].T)
+        return proportions
+    
+    def get_results_df(self, quantiles=(0.025, 0.975)):
+        if self.deconvolution_module.log_concentrations is None:
+            raise ValueError("Please run deconvolute() first.")
+        
+        limits = np.empty((self.n_bulk_samples, self.n_labels, 2))
 
-        assert (self.X[0].shape[1] == self.Y.shape[1]), f"{self.X[0].shape} != {self.Y.shape}"
-
-        # ---------------------------
-        #       Gene weights
-        # ---------------------------
-
-        if weight_type is not None:
-            if f"{weight_type}_{self.label_key}" not in self.adata.varm_keys():
-                scores = np.empty((self.adata.shape[1], self.n_labels))
-                for i, ct in enumerate(self.labels):
-                        scores[:, i] = self.adata.uns["de"][self.label_key][f"{ct} vs. rest"][weight_type].values
-                        if "pvals_adj" == weight_type:
-                            scores[:, i] = 1.0-scores[:, i]
-
-            else:
-                scores = self.adata.varm[f"{weight_type}_{self.label_key}"]
-
-            # scores = pd.DataFrame(scores, index=self.adata.var_names, columns=self.cell_types)
-            if weight_agg == "mean":
-                gene_weights = scores.mean(axis=1)
-            elif weight_agg == "geom_mean":
-                gene_weights = np.exp(np.log(scores + self.eps).mean(axis=1))
-            elif weight_agg == "min":
-                gene_weights = scores.min(axis=1)
-            elif weight_agg == "max":
-                gene_weights = scores.max(axis=1)
-
-            _min, _max = np.quantile(gene_weights, quantiles)
-            gene_weights = gene_weights.clip(_min, _max)
-
-            if log_weight:
-                gene_weights = np.log1p(gene_weights)
-
-
-            gene_weights = (gene_weights - gene_weights.min(0)) / (
-                gene_weights.max(0) - gene_weights.min(0)
-            )
-
-            if inverse_weight:
-                gene_weights = 1.0 - gene_weights
-
-            self.adata.varm["gene_weights"] = gene_weights
-
+        proportions = self.deconvolution_module.get_proportions().cpu()
+        if self.use_sub_types:
+            proportions = self.sum_sub_proportions(proportions).cpu()
         else:
-            self.adata.varm["gene_weights"] = np.ones(self.adata.n_vars)
+            for i in range(self.n_bulk_samples):
+                p_dist = dist.Dirichlet(self.deconvolution_module.log_concentrations[i].exp())
+                ps = p_dist.sample((10000,)).cpu()
+                q = np.quantile(ps, quantiles, 0)
+                limits[i, :, :] = q.T
 
-        # Normalising constant for loss function (makes loss comparable between datasets)
-        # self.normalising_constant = np.nanmean(
-        #     np.nan_to_num(self.adata.layers["counts"].sum(0) / self.adata.varm["bulk"].T, posinf=np.nan),
-        #     axis=1
-        # )
-        self.normalising_constant = np.ones(1)
+            _min = pd.DataFrame(
+                limits[:, :, 0],
+                columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+                index=self.adata.uns["bulk_samples"]
+            ).reset_index().melt(id_vars="index")
 
+            _max = pd.DataFrame(
+                limits[:, :, 1],
+                columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+                index=self.adata.uns["bulk_samples"]
+            ).reset_index().melt(id_vars="index")
 
-    def get_signature(self, quantiles=(0.0, 0.3), signature_type: Literal["mean", "median", "nanmean"] = "mean"):
-        loc = torch.empty(self.adata.n_vars, self.n_labels)
-        scale = torch.empty(self.adata.n_vars, self.n_labels)
+        res_df = pd.DataFrame(
+            proportions,
+            columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+            index=self.adata.uns["bulk_samples"]
+        ).reset_index().melt(id_vars="index")
 
-        for i, _ in enumerate(self.labels):
-            _x = self.X[i].copy()
-            _min, _max = np.quantile(_x, quantiles, axis=0)
-            mask = (_min <= _x) & (_x <= _max)
-            _x[~mask] = np.nan
-            _x[:, (np.isnan(_x).sum(0) == _x.shape[0])] = 0
+        res_df.rename(columns={"index": "sample", "value": "est", "variable":"cell_type"}, inplace=True)
 
-            if signature_type == "mean":
-                loc[:, i] = torch.tensor(self.X[i].mean(0))
-            elif signature_type == "median":
-                loc[:, i] = torch.tensor(np.quantile(self.X[i], 0.5, axis=0))
-            elif signature_type == "nanmean":
-                loc[:, i] = torch.tensor(np.nanmean(_x, 0))
-                
-            scale[:, i] = torch.tensor(self.X[i].std(0))
+        if not self.use_sub_types:
+            res_df["min"] = res_df["est"] - _min["value"]
+            res_df["max"] = _max["value"] - res_df["est"]
+        return res_df
 
-        assert not torch.isnan(loc).any(), "NaN found in loc"
-        assert not torch.isnan(scale).any(), "NaN found in scale"
-
-        return loc, scale
 
     def sum_sub_proportions(self, sub_proportions):
         d = {}
         for i, sub_type in enumerate(self.sub_types):
             cell_type = "_".join(sub_type.split("_")[:-1])
             if cell_type not in d.keys():
-                d[cell_type] = sub_proportions[i]
+                d[cell_type] = sub_proportions[:, i]
             else:
-                d[cell_type] += sub_proportions[i]
+                d[cell_type] += sub_proportions[:, i]
 
-        return np.array([d[cell_type] for cell_type in self.cell_types])
+        return np.array([d[cell_type] for cell_type in self.cell_types]).T
+    
+    def check_fit(self, path=None):
+        f, ax = plt.subplots(self.n_labels, self.n_labels, figsize=(20, 20), dpi=100)
+        res = scout.tl.rank_marker_genes(self.adata, self.label_key, copy=True)
+        for i in range(self.n_labels):
+            for j in range(self.n_labels):
+                gene = res[f"{self.labels[i]} vs. rest"].sort_values("gene_score", ascending=False).index[0]
+                ax[i,0].set_ylabel(gene)
+                ax[i,j].set_xlabel(self.labels[j])
+                ax[i,j].set_yticks([])
+                gene_i = self.adata.var_names.tolist().index(gene)
+                self.deconvolution_module.plot_pdf(gene_i, j, ax=ax[i, j])
 
-    def _fit(self, model, y, num_epochs, lr, progress_bar=True):
-        if progress_bar:
-            pbar = tqdm.tqdm(range(num_epochs))
-        else:
-            pbar = range(num_epochs)
+        if path is not None:
+            plt.savefig(path, bbox_inches="tight")
 
-        optim = torch.optim.Adam(model.parameters(), lr=lr)
-
-        for i in pbar:
-            optim.zero_grad()
-            loss = model(y)
-            loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.00001)
-            optim.step()
-            if progress_bar and (i % 50 == 0):
-                pbar.set_postfix(
-                    {
-                        "loss": f"{loss.item():.1f}",
-                        "p": tl.fmt_c(model.get_proportions()),
-                        "lib_size": f"{model.get_lib_size().item():.1f}",
-                    }
-                )
-
-    def deconvolute(
-        self, model_type: Literal["poisson", "normal", "lrm"] = "poisson", log_loss=False,
-        num_epochs=5000, lr=0.1, use_outlier_genes=False, signature_quantiles=(0, 0.95),
-        plot=False, progress_bar=True
-    ):
-        mu, scale = self.get_signature()
-
-        res = np.empty((self.n_bulk_samples, self.n_labels))
-
-        if model_type == "poisson":
-            Model = base.PSM
-        elif model_type == "normal":
-            Model = base.NSM
-        elif model_type == "lrm":
-            Model = base.LRM
-
-        for i in range(self.n_bulk_samples):
-            print(f"Sample: {i+1}/{self.n_bulk_samples}", end="\r")
-            bulk = self.adata.varm["bulk"][:, i]
-
-            mask = (
-                (bulk != 0) & 
-                (~(mu.sum(1) == 0).numpy())
-            )
-
-
-            lrm = Model(self.n_labels, log=log_loss)
-
-            lrm.fit(mu[mask], scale[mask], bulk[mask], num_iter=num_epochs, lr=lr, progress=progress_bar)
-
-            res[i, :] = lrm.get_proportions().detach().numpy()
-
-        return res
-
-        # n_bulk_samples = self.adata.varm["bulk"].shape[1]
-        # results = np.empty((n_bulk_samples, self.n_cell_types))
-        # loc, scale = self.get_signature(quantiles=signature_quantiles)
-
-        # for sample_i, y in enumerate(self.Y):
-        #     if not use_outlier_genes:
-        #         mask = ~self.adata.varm["outlier"][:, sample_i]
-        #         gene_weights = torch.tensor(self.adata.varm["gene_weights"])
-        #     else:
-        #         mask = np.ones(self.adata.n_vars, dtype=bool)
-        #         gene_weights = torch.tensor(self.adata.varm["gene_weights"])
-
-        #     mask = mask & (~(loc.sum(1) == 0)).numpy()
-
-        #     print(f"Sample: {sample_i+1}/{n_bulk_samples}", end=" | ")
-        #     # if progress_bar:
-        #     print(f"Using {mask.sum()} genes ({mask.sum()*100 / self.adata.n_vars:.1f}%)", end="\r")
-
-        #     if model_type == "normal":
-        #         model = base.NSM(
-        #             loc[mask], scale[mask],
-        #             gene_weights=gene_weights[mask],
-        #             # norm=self.normalising_constant[sample_i],
-        #         )
-        #     elif model_type == "mse":
-        #         model = base.MSEM(loc[mask], gene_weights=gene_weights[mask])
-        #     elif model_type == "poisson":
-        #         model = base.PSM(
-        #             loc[mask],
-        #             gene_weights=gene_weights[mask],
-        #             #norm=self.normalising_constant[sample_i],
-        #         )
-        #     else:
-        #         assert False
-
-        #     self._fit(model, y[mask], num_epochs=num_epochs, lr=lr, progress_bar=progress_bar)
-        #     proportions = model.get_proportions().detach().numpy()
-
-        #     # if self.use_sub_types:
-        #     #     for i, cell_type in enumerate(self.sub_types):
-        #     #         print(f"{cell_type}: {proportions[i]:.3f} | ", end="")
-        #     #     print()
-
-        #     if self.use_sub_types:
-        #         results[sample_i, :] = self.sum_sub_proportions(proportions)
-        #         for i, cell_type in enumerate(self.cell_types):
-        #             print(f"{cell_type}: {results[sample_i, i]:.3f} | ", end="")
-        #         print()
-        #     else:
-        #         results[sample_i, :] = proportions
-
-        # df = pd.DataFrame(results, columns=self.cell_types, index=self.adata.uns["bulk_samples"])
-        # df = df.reindex(sorted(df.columns), axis=1)
-
-        # if plot:
-        #     if n_bulk_samples > 1:
-        #         pl.proportions_heatmap(df)
-
-        #     pl.bar_proportions(df)
-        # return df
+        plt.show()

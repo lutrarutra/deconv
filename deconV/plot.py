@@ -670,27 +670,6 @@ def proportions_heatmap(df, path=None, figsize=(8, 0.2), dpi=100):
         plt.show()
 
 
-# def scatter_check(true_df, est_df, figsize=(8, 8), dpi=100, path=None):
-#     samples = true_df.index.values
-#     nrows = int(np.ceil(len(samples) / 2))
-
-#     f, ax = plt.subplots(2, nrows, figsize=figsize, dpi=dpi)
-#     for i, sample in enumerate(samples):
-#         sns.scatterplot(
-#             x=true_df.loc[sample],
-#             y=est_df.loc[sample],
-#             edgecolor=(0, 0, 0, 1),
-#             color=(1, 1, 1, 0),
-#             ax=ax[i],
-#             linewidth=1,
-#         )
-
-#     if path:
-#         plt.savefig(path, bbox_inches="tight")
-#         plt.close()
-#     else:
-#         plt.show()
-
 
 def bar_proportions(proportions_df, path=None, figsize=(0.4, 10), dpi=100):
     palette = sns.color_palette("hls", n_colors=len(proportions_df.columns))
@@ -825,3 +804,36 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
         plt.close()
     else:
         plt.show()
+
+def prediction_plot(decon, i, path=None):
+    est_bulk = np.log1p(decon.deconvolution_module.pseudo_bulk()[i,:].cpu().numpy())
+    true_bulk = np.log1p(decon.adata.varm["bulk"][:, i])
+    mu = np.log1p(decon.adata.layers["counts"].mean(0))
+
+    _max = max(est_bulk.max(), true_bulk.max())
+
+
+    clr = decon.adata.varm["pseudo_factor"][:, i]
+    zmin = clr.min()
+    zmax = clr.max()
+    norm = matplotlib.colors.TwoSlopeNorm(vmin=zmin, vmax=zmax, vcenter=0)
+
+    f, ax = plt.subplots(1, 1, figsize=(8,8), dpi=100)
+
+    sns.scatterplot(
+        x=np.log1p(mu),
+        y=true_bulk-est_bulk,
+        c=clr,
+        cmap="seismic",
+        norm=norm,
+        ax=ax,
+        edgecolor=(0, 0, 0, 1),
+        linewidth=0.8,
+        s=35,
+    )
+    ax.axhline(0, color="royalblue", linestyle="--", linewidth=1)
+    ax.set_ylabel("log1p(bulk) - log1p(est bulk)")
+    ax.set_xlabel("log1p(mean gene expression)")
+    
+    if path is not None:
+        plt.savefig(path, bbox_inches="tight")
