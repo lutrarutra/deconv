@@ -4,5 +4,6 @@ __pycache__/
 data/
 test/
 temp/
+build/
 node_modules/
 *.egg-info/
