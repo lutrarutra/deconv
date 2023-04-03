@@ -66,11 +66,11 @@ class Base(ABC):
         for epoch in pbar:
             losses = []
             for x, labels, _ in loader:
-                loss = svi.step(x, labels)
-                losses.append(loss)
+                self.reference_loss = svi.step(x, labels)
+                losses.append(self.reference_loss)
 
             pbar.set_postfix(
-                loss=f"{np.mean(losses):.2e}",
+                loss=f"{np.mean(self.reference_loss):.2e}",
                 lr=f"{list(optim.get_state().values())[0]['param_groups'][0]['lr']:.2e}",
             )
 
@@ -104,13 +104,12 @@ class Base(ABC):
         svi = SVI(self.dec_model, guide, optim=optim, loss=Trace_ELBO())
 
         pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
-            
         for epoch in pbar:
-            loss = svi.step(bulk)
+            self.deconvolution_loss = svi.step(bulk)
 
             if progress:
                 pbar.set_postfix(
-                    loss=f"{loss:.2e}",
+                    loss=f"{self.deconvolution_loss:.2e}",
                     lr=f"{list(optim.get_state().values())[0]['param_groups'][0]['lr']:.2e}",
                 )
             
