@@ -630,25 +630,25 @@ def clustermap(
     rcParams["axes.grid"] = _grid
 
 
-def prediction_plot(mean, Y, path=None, figsize=(8, 8), dpi=100):
-    plt.style.use("ggplot")
+# def prediction_plot(mean, Y, path=None, figsize=(8, 8), dpi=100):
+#     plt.style.use("ggplot")
 
-    f, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
-    sns.scatterplot(
-        x=mean, y=Y, edgecolor=(0, 0, 0, 1), color=(1, 1, 1, 0), ax=ax, linewidth=1
-    )
-    ax.plot([0, Y.max()], [0, Y.max()], label="y=x", c="royalblue")
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("Deconvoluted Bulk")
-    ax.set_ylabel("Bulk")
+#     f, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+#     sns.scatterplot(
+#         x=mean, y=Y, edgecolor=(0, 0, 0, 1), color=(1, 1, 1, 0), ax=ax, linewidth=1
+#     )
+#     ax.plot([0, Y.max()], [0, Y.max()], label="y=x", c="royalblue")
+#     ax.set_xscale("log")
+#     ax.set_yscale("log")
+#     ax.set_xlabel("Deconvoluted Bulk")
+#     ax.set_ylabel("Bulk")
 
-    if path:
-        mkdir(os.path.dirname(path))
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-    else:
-        plt.show()
+#     if path:
+#         mkdir(os.path.dirname(path))
+#         plt.savefig(path, bbox_inches="tight")
+#         plt.close()
+#     else:
+#         plt.show()
 
 
 def proportions_heatmap(df, path=None, figsize=(8, 0.2), dpi=100):
@@ -812,7 +812,6 @@ def prediction_plot(decon, i, path=None):
     mu = np.log1p(decon.adata.layers["counts"].mean(0))
 
     _max = max(est_bulk.max(), true_bulk.max())
-
 
     clr = decon.adata.varm["pseudo_factor"][:, i]
     zmin = clr.min()

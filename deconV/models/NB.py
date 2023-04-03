@@ -203,13 +203,15 @@ class NB(Base):
         alpha = self.params["alpha"]
         beta = self.params["beta"]
 
-        ct_total_count = self.params["log_total_count"].exp()
-
         probs = dist.Beta(alpha, beta).mean
 
+        mu_total_count = self.params["mu_total_count"]
+        std_total_count = self.params["std_total_count"]
+        ct_total_count = dist.LogNormal(mu_total_count, std_total_count).mean
+
         proportions = self.get_proportions()
-        total_count = torch.sum(proportions.unsqueeze(0) * ct_total_count.unsqueeze(1), dim=-1)
-        total_count = self.get_cell_counts() * total_count
+        total_count = torch.sum(proportions.unsqueeze(-1) * ct_total_count.unsqueeze(0), dim=1)
+        total_count = self.get_cell_counts() * total_count.T
 
         if self.dec_model_dropout:
             dropout = logits2probs(self.params["dropout_logits"])
