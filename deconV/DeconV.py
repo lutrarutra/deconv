@@ -145,7 +145,7 @@ class DeconV:
             for j in range(self.n_labels):
                 gene = res[f"{self.labels[i]} vs. rest"].sort_values("gene_score", ascending=False).index[0]
                 ax[i,0].set_ylabel(gene)
-                ax[i,j].set_xlabel(self.labels[j])
+                ax[self.n_labels-1,j].set_xlabel(self.labels[j])
                 ax[i,j].set_yticks([])
                 gene_i = self.adata.var_names.tolist().index(gene)
                 self.deconvolution_module.plot_pdf(gene_i, j, ax=ax[i, j])
