@@ -20,8 +20,8 @@ class Beta(Base):
     def __init__(self, adata, labels_key, dropout_type: Literal["separate", "shared", None] = "separate", device="cpu"):
         super().__init__(adata, labels_key, dropout_type, device)
 
-        self.alpha0 = 1.0 * torch.ones(self.n_genes, self.n_labels, device=self.device, dtype=torch.float64)
-        self.beta0 = 50.0 * torch.ones(self.n_genes, self.n_labels, device=self.device, dtype=torch.float64)
+        self.alpha0 = 1.0 * torch.ones((self.n_genes, self.n_labels), device=self.device, dtype=torch.float64)
+        self.beta0 = 50.0 * torch.ones((self.n_genes, self.n_labels), device=self.device, dtype=torch.float64)
 
     def ref_model(self, sc_counts, labels):
         if self.ref_dropout_type == "separate":

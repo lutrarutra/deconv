@@ -20,11 +20,11 @@ class NB(Base):
     def __init__(self, adata, labels_key, dropout_type: Literal["separate", "shared", None] = "separate", device="cpu"):
         super().__init__(adata, labels_key, dropout_type, device)
 
-        self.mu_total_count0 = 5 * torch.ones((self.n_labels, self.n_genes), device=self.device)
-        self.std_total_count0 = 1 * torch.ones((self.n_labels, self.n_genes), device=self.device)
+        self.mu_total_count0 = 5 * torch.ones((self.n_labels, self.n_genes), device=self.device, dtype=torch.float64)
+        self.std_total_count0 = 1 * torch.ones((self.n_labels, self.n_genes), device=self.device, dtype=torch.float64)
 
-        self.alpha0 = 1.0 * torch.ones(self.n_genes, device=self.device)
-        self.beta0 = 50.0 * torch.ones(self.n_genes, device=self.device)
+        self.alpha0 = 1.0 * torch.ones(self.n_genes, device=self.device, dtype=torch.float64)
+        self.beta0 = 50.0 * torch.ones(self.n_genes, device=self.device, dtype=torch.float64)
 
 
     def ref_model(self, sc_counts, labels):
