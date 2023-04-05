@@ -132,7 +132,7 @@ class Gamma(Base):
         
         concentrations = pyro.param(
             "concentrations",
-            torch.ones((n_samples, self.n_labels), device=self.device),
+            torch.ones((n_samples, self.n_labels), device=self.device, dtype=torch.float64),
             constraint=dist.constraints.positive
         )
 
