@@ -39,7 +39,7 @@ class LogNormal(Base):
                 torch.zeros(self.n_genes, device=self.device),
                 constraint=dist.constraints.real
             )
-            dropout_logits = dropout_logits.T
+
         elif self.ref_dropout_type is not None:
             raise ValueError("Unknown dropout type")
 
