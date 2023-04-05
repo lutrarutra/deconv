@@ -122,8 +122,11 @@ class DeconV:
         res_df.rename(columns={"index": "sample", "value": "est", "variable":"cell_type"}, inplace=True)
 
         if not self.use_sub_types:
-            res_df["min"] = res_df["est"] - _min["value"]
-            res_df["max"] = _max["value"] - res_df["est"]
+            res_df["min"] = (res_df["est"] - _min["value"]).clip(lower=0.0)
+            res_df["max"] = (_max["value"] - res_df["est"]).clip(lower=0.0)
+
+        # assert res_df["min"].min() > 0, res_df["min"].min()
+        # assert res_df["max"].min() > 0, res_df["max"].min()
         return res_df
 
 
