@@ -109,7 +109,7 @@ class Static(Base):
         with pyro.plate("samples", n_samples, device=self.device):
             pyro.sample("proportions", dist.Dirichlet(log_concentration.exp()))
 
-    def pseudo_bulk(self, n_samples=1000):
+    def pseudo_bulk(self):
         if self.log_concentrations is None:
             raise ValueError("Run deconvolute() first")
         
@@ -128,12 +128,11 @@ class Static(Base):
         else:
             bulk_dist = dist.Poisson(rate=rate.T)
 
-        return bulk_dist.sample((n_samples,)).mean(0)
+        return bulk_dist.mean
 
 
     def plot_pdf(self, gene_i, ct_i, n_samples=5000, ax=None):
         gex = self.adata[self.adata.obs[self.labels_key].cat.codes == ct_i, gene_i].layers["counts"].toarray()
-
         rate = self.params["log_rate"][gene_i, ct_i].exp()
 
         if self.ref_dropout_type is not None:

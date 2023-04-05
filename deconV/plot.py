@@ -809,9 +809,8 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
 def prediction_plot(decon, i, path=None):
     est_bulk = np.log1p(decon.deconvolution_module.pseudo_bulk()[i,:].cpu().numpy())
     true_bulk = np.log1p(decon.adata.varm["bulk"][:, i])
-    mu = np.log1p(decon.adata.layers["counts"].mean(0))
 
-    _max = max(est_bulk.max(), true_bulk.max())
+    mu = np.log1p(decon.adata.layers["counts"].mean(0))
 
     clr = decon.adata.varm["pseudo_factor"][:, i]
     zmin = clr.min()
@@ -821,7 +820,7 @@ def prediction_plot(decon, i, path=None):
     f, ax = plt.subplots(1, 1, figsize=(8,8), dpi=100)
 
     sns.scatterplot(
-        x=np.log1p(mu),
+        x=mu,
         y=true_bulk-est_bulk,
         c=clr,
         cmap="seismic",

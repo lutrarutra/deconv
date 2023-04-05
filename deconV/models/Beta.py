@@ -38,7 +38,6 @@ class Beta(Base):
                 torch.zeros(self.n_genes, device=self.device),
                 constraint=dist.constraints.real
             )
-            dropout_logits = dropout_logits.T
         elif self.ref_dropout_type is not None:
             raise ValueError("Unknown dropout type")
 
@@ -177,7 +176,7 @@ class Beta(Base):
             with pyro.plate("genes", self.n_genes, device=self.device):
                 pyro.sample("theta", dist.Beta(alpha, beta))
 
-    def pseudo_bulk(self, n_samples=1000):
+    def pseudo_bulk(self):
         if self.log_concentrations is None:
             raise ValueError("Run deconvolute() first")
         
@@ -204,7 +203,7 @@ class Beta(Base):
         else:
             bulk_dist = dist.Poisson(rate=rate.T)
 
-        return bulk_dist.sample((n_samples,)).mean(0)
+        return bulk_dist.mean
 
 
     def plot_pdf(self, gene_i, ct_i, n_samples=5000, ax=None):
@@ -216,7 +215,7 @@ class Beta(Base):
 
         mu_cell_size = self.params["mu_cell_size"][ct_i]
         std_cell_size = self.params["std_cell_size"][ct_i]
-        cell_size = pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
+        cell_size = dist.LogNormal(mu_cell_size, std_cell_size).sample((n_samples,))
         rate = theta * cell_size
 
         if self.ref_dropout_type is not None:
@@ -229,6 +228,7 @@ class Beta(Base):
             x = dist.ZeroInflatedPoisson(rate=rate, gate_logits=dropout_logits).sample().cpu()
         else:
             x = dist.Poisson(rate=rate).sample().cpu()
+
 
         if ax is None:
             f, ax = plt.subplots(figsize=(4,4), dpi=120)

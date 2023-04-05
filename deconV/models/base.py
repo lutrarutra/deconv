@@ -21,8 +21,19 @@ def logits2probs(logits):
 class RefDataSet(torch.utils.data.Dataset):
     def __init__(self, adata, label_key, layer="counts", device="cpu") -> None:
         super().__init__()
-        self.sc_counts = torch.tensor(adata.layers[layer], dtype=torch.float32, device=device).round()
+        self.sc_counts = torch.tensor(adata.layers[layer], dtype=torch.float32, device=device)
+
+        if not np.equal(np.mod(adata.layers[layer], 1), 0).all():
+            print("Warning: single-cell counts are not integers, make sure you provided the correct layer with raw counts.")
+            print("Rounding counts to integers.")
+            self.sc_counts = (self.sc_counts + torch.tensor(1e-8)).round()
+
         self.labels = torch.tensor(adata.obs[label_key].cat.codes.values, dtype=torch.long, device=device)
+
+        # for label in np.unique(self.labels.cpu()):
+        #     mask = (self.sc_counts[self.labels == label,:].sum(0) == 0)
+        #     idx = (self.labels == label).nonzero(as_tuple=True)[0][0]
+        #     self.sc_counts[idx, mask] = 1
 
     def __len__(self):
         return len(self.sc_counts)
@@ -45,7 +56,7 @@ class Base(ABC):
         self.device = device
 
 
-    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True):
+    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts"):
         pyro.clear_param_store()
 
         if seed is not None:        
@@ -57,7 +68,7 @@ class Base(ABC):
         guide = config_enumerate(self.ref_guide, "parallel", expand=True)
         svi = SVI(self.ref_model, guide, optim=optim, loss=Trace_ELBO())
         
-        dataset = RefDataSet(self.adata, self.labels_key, device=self.device)
+        dataset = RefDataSet(self.adata, self.labels_key, device=self.device, layer=layer)
         if batch_size is None:
             batch_size = self.adata.n_obs
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -86,7 +97,7 @@ class Base(ABC):
         self.dec_model_dropout = model_dropout
 
         if bulk is None:
-            bulk = torch.tensor(self.adata.varm["bulk"].T, dtype=torch.float32, device=self.device).round()
+            bulk = (torch.tensor(self.adata.varm["bulk"].T, dtype=torch.float32, device=self.device)).round()
         if isinstance(bulk, np.ndarray):
             bulk = torch.tensor(bulk, dtype=torch.float32, device=self.device).round()
 
@@ -94,13 +105,15 @@ class Base(ABC):
         
         def get_optim_params(param_name):
             if param_name == "log_cell_counts":
-                return dict(lr=lr, lrd=lrd*0.99)
+                return dict(lr=lr, lrd=lrd)
             else:
                 return dict(lr=lr, lrd=lrd)
 
         pyro.clear_param_store()
         optim = pyro.optim.ClippedAdam(get_optim_params)
+        
         guide = config_enumerate(self.dec_guide, "parallel", expand=True)
+
         svi = SVI(self.dec_model, guide, optim=optim, loss=Trace_ELBO())
 
         pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")

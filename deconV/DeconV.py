@@ -28,12 +28,11 @@ class DeconV:
             self, adata, cell_type_key,
             model_type: Literal["static", "beta", "gamma", "lognormal", "nb"] = "static",
             dropout_type: Literal["separate", "shared", None] = "separate",
-            layer="counts", sub_type_key=None, device="cpu"
+            sub_type_key=None, device="cpu"
         ):
         self.model_type = model_type
         
         self.use_sub_types = sub_type_key is not None
-        self.layer = layer
         self.adata = adata
 
         self.cell_type_key = cell_type_key
@@ -61,13 +60,14 @@ class DeconV:
         elif self.model_type == "nb":
             self.deconvolution_module = models.NB(self.adata, self.label_key, dropout_type=dropout_type, device=device)
 
-    def fit_reference(self, lr=0.1, lrd=0.995, num_epochs=500, batch_size=None, seed=None, pyro_validation=True):
+    def fit_reference(self, lr=0.1, lrd=0.995, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts"):
         self.deconvolution_module.fit_reference(
             lr=lr, lrd=lrd,
             num_epochs=num_epochs,
             batch_size=batch_size,
             seed=seed,
-            pyro_validation=pyro_validation
+            pyro_validation=pyro_validation,
+            layer=layer
         )
 
     def deconvolute(self, model_dropout=True, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):

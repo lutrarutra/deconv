@@ -196,7 +196,7 @@ class NB(Base):
         # with pyro.plate("genes", self.n_genes, device=self.device):
         #     pyro.sample("probs", dist.Beta(alpha, beta))
 
-    def pseudo_bulk(self, n_samples=1000):
+    def pseudo_bulk(self):
         if self.log_concentrations is None:
             raise ValueError("Run deconvolute() first")
         
@@ -229,7 +229,7 @@ class NB(Base):
                 probs=probs,
             )
 
-        return bulk_dist.sample((n_samples,)).mean(0)
+        return bulk_dist.mean
 
 
     def plot_pdf(self, gene_i, ct_i, n_samples=5000, ax=None):
