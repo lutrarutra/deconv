@@ -221,38 +221,38 @@ class Base(ABC):
     #     return model
 
 
-    def res_df(self):
-        assert self.concentrations is not None, "You must deconvolute first"
-        n_bulk_samples = self.concentrations.shape[0]
-        quantiles = np.empty((n_bulk_samples, self.n_labels, 2))
+    # def res_df(self):
+    #     assert self.concentrations is not None, "You must deconvolute first"
+    #     n_bulk_samples = self.concentrations.shape[0]
+    #     quantiles = np.empty((n_bulk_samples, self.n_labels, 2))
 
-        res = dist.Dirichlet(self.concentrations).mean
+    #     res = dist.Dirichlet(self.concentrations).mean
 
-        for i in range(n_bulk_samples):
-            p_dist = dist.Dirichlet(self.concentrations[i])
-            ps = p_dist.sample((10000,))
-            q = np.quantile(ps, (0.025, 0.975), 0)
-            quantiles[i, :, :] = q.T
+    #     for i in range(n_bulk_samples):
+    #         p_dist = dist.Dirichlet(self.concentrations[i])
+    #         ps = p_dist.sample((10000,))
+    #         q = np.quantile(ps, (0.025, 0.975), 0)
+    #         quantiles[i, :, :] = q.T
 
-        _min = pd.DataFrame(
-            quantiles[:, :, 0],
-            columns=self.adata.obs["labels"].cat.categories.to_list(),
-            index=self.adata.uns["bulk_samples"]
-        ).reset_index().melt(id_vars="index")
+    #     _min = pd.DataFrame(
+    #         quantiles[:, :, 0],
+    #         columns=self.adata.obs["labels"].cat.categories.to_list(),
+    #         index=self.adata.uns["bulk_samples"]
+    #     ).reset_index().melt(id_vars="index")
 
-        _max = pd.DataFrame(
-            quantiles[:, :, 1],
-            columns=self.adata.obs["labels"].cat.categories.to_list(),
-            index=self.adata.uns["bulk_samples"]
-        ).reset_index().melt(id_vars="index")
+    #     _max = pd.DataFrame(
+    #         quantiles[:, :, 1],
+    #         columns=self.adata.obs["labels"].cat.categories.to_list(),
+    #         index=self.adata.uns["bulk_samples"]
+    #     ).reset_index().melt(id_vars="index")
 
-        res_df = pd.DataFrame(
-            res,
-            columns=self.adata.obs["labels"].cat.categories.to_list(),
-            index=self.adata.uns["bulk_samples"]
-        ).reset_index().melt(id_vars="index")
+    #     res_df = pd.DataFrame(
+    #         res,
+    #         columns=self.adata.obs["labels"].cat.categories.to_list(),
+    #         index=self.adata.uns["bulk_samples"]
+    #     ).reset_index().melt(id_vars="index")
 
-        res_df.rename(columns={"index": "sample", "value": "est", "variable":"cell_type"}, inplace=True)
-        res_df["min"] = res_df["est"] - _min["value"]
-        res_df["max"] = _max["value"] - res_df["est"]
-        return res_df
+    #     res_df.rename(columns={"index": "sample", "value": "est", "variable":"cell_type"}, inplace=True)
+    #     res_df["min"] = res_df["est"] - _min["value"]
+    #     res_df["max"] = _max["value"] - res_df["est"]
+    #     return res_df

@@ -45,7 +45,7 @@ class LogNormal(Base):
 
         mu = pyro.param(
             "mu", self.mu0,
-            dist.constraints.positive
+            dist.constraints.real
         )
 
         sigma = pyro.param(
@@ -75,7 +75,7 @@ class LogNormal(Base):
     def ref_guide(self, sc_counts, labels):
         mu = pyro.param(
             "mu", self.mu0,
-            dist.constraints.positive
+            dist.constraints.real
         )
 
         sigma = pyro.param(
@@ -135,7 +135,7 @@ class LogNormal(Base):
         concentrations = pyro.param(
             "concentrations",
             torch.ones((n_samples, self.n_labels), device=self.device, dtype=torch.float64),
-            constraint=dist.constraints.real
+            constraint=dist.constraints.positive
         )
 
         with pyro.plate("samples", n_samples, device=self.device):
