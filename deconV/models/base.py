@@ -50,7 +50,7 @@ class Base(ABC):
         self.n_labels = len(adata.obs[labels_key].cat.categories)
         
         self.params = None
-        self.log_concentrations = None
+        self.concentrations = None
 
         self.ref_dropout_type = dropout_type
         self.device = device
@@ -104,7 +104,7 @@ class Base(ABC):
         assert bulk.shape[1] == self.n_genes, "The bulk data must have the same number of genes as the reference data"
         
         def get_optim_params(param_name):
-            if param_name == "log_cell_counts":
+            if param_name == "cell_counts":
                 return dict(lr=lr, lrd=lrd)
             else:
                 return dict(lr=lr, lrd=lrd)
@@ -126,18 +126,18 @@ class Base(ABC):
                     lr=f"{list(optim.get_state().values())[0]['param_groups'][0]['lr']:.2e}",
                 )
             
-        self.log_concentrations = pyro.param("log_concentration").clone().detach()
-        self.log_cell_counts = pyro.param("log_cell_counts").clone().detach()
+        self.concentrations = pyro.param("concentrations").clone().detach()
+        self.cell_counts = pyro.param("cell_counts").clone().detach()
 
     def get_proportions(self):
-        if self.log_concentrations is None:
+        if self.concentrations is None:
             raise ValueError("You must deconvolute first")
-        return dist.Dirichlet(self.log_concentrations.exp()).mean 
+        return dist.Dirichlet(self.concentrations).mean 
 
     def get_cell_counts(self):
-        if self.log_cell_counts is None:
+        if self.cell_counts is None:
             raise ValueError("You must deconvolute first")
-        return self.log_cell_counts.exp() 
+        return self.cell_counts
 
     @abstractmethod
     def ref_model(self, sc_counts, labels):
@@ -164,14 +164,14 @@ class Base(ABC):
         pass
 
     def save_model(self, dir):
-        if self.log_concentrations is None:
+        if self.concentrations is None:
             raise ValueError("You must deconvolute first")
 
         if not os.path.exists(dir):
             os.makedirs(dir)
         
-        with open(os.path.join(dir, "log_concentrations.npy"), "wb") as f:
-            np.save(f, self.log_concentrations.cpu().numpy())
+        with open(os.path.join(dir, "concentrations.npy"), "wb") as f:
+            np.save(f, self.concentrations.cpu().numpy())
 
         with open(os.path.join(dir, "ref.pkl"), "wb") as f:
             params = self.params
@@ -184,8 +184,8 @@ class Base(ABC):
 
     # @classmethod
     # def load_model(cls, dir, adata, labels_key):
-    #     with open(os.path.join(dir, "log_concentrations.npy"), "rb") as f:
-    #         log_concentrations = torch.tensor(np.load(f))
+    #     with open(os.path.join(dir, "concentrations.npy"), "rb") as f:
+    #         concentrations = torch.tensor(np.load(f))
 
 
     #     with open(os.path.join(dir, "ref.pkl"), "rb") as f:
@@ -214,7 +214,7 @@ class Base(ABC):
     #         model = Static(adata, labels_key, ref_dropout_type)
 
         
-    #     model.log_concentrations = log_concentrations
+    #     model.concentrations = concentrations
     #     model.params = params
     #     model.dec_model_dropout = dec_model_dropout
 
@@ -222,14 +222,14 @@ class Base(ABC):
 
 
     def res_df(self):
-        assert self.log_concentrations is not None, "You must deconvolute first"
-        n_bulk_samples = self.log_concentrations.shape[0]
+        assert self.concentrations is not None, "You must deconvolute first"
+        n_bulk_samples = self.concentrations.shape[0]
         quantiles = np.empty((n_bulk_samples, self.n_labels, 2))
 
-        res = dist.Dirichlet(self.log_concentrations.exp()).mean
+        res = dist.Dirichlet(self.concentrations).mean
 
         for i in range(n_bulk_samples):
-            p_dist = dist.Dirichlet(self.log_concentrations[i].exp())
+            p_dist = dist.Dirichlet(self.concentrations[i])
             ps = p_dist.sample((10000,))
             q = np.quantile(ps, (0.025, 0.975), 0)
             quantiles[i, :, :] = q.T

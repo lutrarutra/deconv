@@ -90,11 +90,15 @@ class Gamma(Base):
     def dec_model(self, bulk):
         n_samples = len(bulk)
 
-        log_concentration = torch.zeros((n_samples, self.n_labels), device=self.device)
+        concentrations = pyro.param(
+            "concentrations",
+            torch.ones((n_samples, self.n_labels), device=self.device, dtype=torch.float64),
+            constraint=dist.constraints.positive
+        )
 
-        log_cell_counts = pyro.param(
-            "log_cell_counts",
-            7.0 * torch.ones(n_samples, device=self.device),
+        cell_counts = pyro.param(
+            "cell_counts",
+            1e7 * torch.ones(n_samples, device=self.device),
             constraint=dist.constraints.positive
         )
 
@@ -106,10 +110,10 @@ class Gamma(Base):
                 theta = pyro.sample("theta", dist.Gamma(alpha, beta))
 
         with pyro.plate("samples", n_samples, device=self.device):
-            proportions = pyro.sample("proportions", dist.Dirichlet(log_concentration.exp()))
+            proportions = pyro.sample("proportions", dist.Dirichlet(concentrations))
 
             rate = torch.sum(proportions.unsqueeze(0) * theta.unsqueeze(1), dim=-1)
-            rate = log_cell_counts.exp() * rate
+            rate = cell_counts * rate
 
             if self.dec_model_dropout:
                 dropout = logits2probs(self.params["dropout_logits"])
@@ -126,14 +130,14 @@ class Gamma(Base):
     def dec_guide(self, bulk):
         n_samples = len(bulk)
         
-        log_concentration = pyro.param(
-            "log_concentration",
-            torch.zeros((n_samples, self.n_labels), device=self.device),
-            constraint=dist.constraints.real
+        concentrations = pyro.param(
+            "concentrations",
+            torch.ones((n_samples, self.n_labels), device=self.device),
+            constraint=dist.constraints.positive
         )
 
         with pyro.plate("samples", n_samples, device=self.device):
-            pyro.sample("proportions", dist.Dirichlet(log_concentration.exp()))
+            pyro.sample("proportions", dist.Dirichlet(concentrations))
 
         alpha = self.params["alpha"]
         beta = self.params["beta"]
@@ -144,7 +148,7 @@ class Gamma(Base):
 
 
     def pseudo_bulk(self):
-        if self.log_concentrations is None:
+        if self.concentrations is None:
             raise ValueError("Run deconvolute() first")
         alpha = self.params["alpha"]
         beta = self.params["beta"]

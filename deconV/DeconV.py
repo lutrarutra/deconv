@@ -86,7 +86,7 @@ class DeconV:
         return proportions
     
     def get_results_df(self, quantiles=(0.025, 0.975)):
-        if self.deconvolution_module.log_concentrations is None:
+        if self.deconvolution_module.concentrations is None:
             raise ValueError("Please run deconvolute() first.")
         
         limits = np.empty((self.n_bulk_samples, self.n_labels, 2))
@@ -96,7 +96,7 @@ class DeconV:
             proportions = self.sum_sub_proportions(proportions).cpu()
         else:
             for i in range(self.n_bulk_samples):
-                p_dist = dist.Dirichlet(self.deconvolution_module.log_concentrations[i].exp())
+                p_dist = dist.Dirichlet(self.deconvolution_module.concentrations[i])
                 ps = p_dist.sample((10000,)).cpu()
                 q = np.quantile(ps, quantiles, 0)
                 limits[i, :, :] = q.T
