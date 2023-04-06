@@ -226,7 +226,6 @@ class NB(Base):
 
             if dropout.dim() == 2:
                 dropout = dropout.T
-                    
 
             bulk_dist = dist.ZeroInflatedNegativeBinomial(
                 total_count=total_count.T,
@@ -260,9 +259,6 @@ class NB(Base):
                 dropout_logits = self.params["dropout_logits"][gene_i]
             else:
                 raise ValueError("Unknown dropout type")
-            
-            if dropout.dim() == 2:
-                dropout = dropout.T
                     
             x = dist.ZeroInflatedNegativeBinomial(
                 total_count=total_count,
