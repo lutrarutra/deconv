@@ -260,10 +260,14 @@ class NB(Base):
                 dropout_logits = self.params["dropout_logits"][gene_i]
             else:
                 raise ValueError("Unknown dropout type")
+            
+            if dropout.dim() == 2:
+                dropout = dropout.T
+                    
             x = dist.ZeroInflatedNegativeBinomial(
                 total_count=total_count,
                 probs=probs,
-                gate_logits=dropout_logits.T
+                gate_logits=dropout_logits
             ).sample().cpu()
         else:
             x = dist.NegativeBinomial(
