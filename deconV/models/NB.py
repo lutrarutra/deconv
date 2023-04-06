@@ -224,6 +224,10 @@ class NB(Base):
             if self.ref_dropout_type == "separate":
                 dropout = torch.sum(proportions.unsqueeze(0) * dropout.unsqueeze(1), dim=-1)
 
+            if dropout.dim() == 2:
+                dropout = dropout.T
+                    
+
             bulk_dist = dist.ZeroInflatedNegativeBinomial(
                 total_count=total_count.T,
                 probs=probs,
