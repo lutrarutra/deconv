@@ -27,7 +27,7 @@ class Beta(Base):
         if self.ref_dropout_type == "separate":
             dropout_logits = pyro.param(
                 "dropout_logits",
-                torch.zeros(self.n_genes, self.n_labels, device=self.device),
+                torch.zeros(self.n_genes, self.n_labels, device=self.device, dtype=torch.float64),
                 constraint=dist.constraints.real
             )
             dropout_logits = dropout_logits[:, labels].T
@@ -35,7 +35,7 @@ class Beta(Base):
         elif self.ref_dropout_type == "shared":
             dropout_logits = pyro.param(
                 "dropout_logits",
-                torch.zeros(self.n_genes, device=self.device),
+                torch.zeros(self.n_genes, device=self.device, dtype=torch.float64),
                 constraint=dist.constraints.real
             )
         elif self.ref_dropout_type is not None:
@@ -53,13 +53,13 @@ class Beta(Base):
 
         mu_cell_size = pyro.param(
             "mu_cell_size", 
-            10 * torch.ones(self.n_labels, device=self.device),
+            10 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
             constraint=dist.constraints.real
         )
 
         std_cell_size = pyro.param(
             "std_cell_size",
-            0.1 * torch.ones(self.n_labels, device=self.device),
+            0.1 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
             constraint=dist.constraints.positive
         )
 
@@ -96,19 +96,20 @@ class Beta(Base):
 
         mu_cell_size = pyro.param(
             "mu_cell_size", 
-            10 * torch.ones(self.n_labels, device=self.device),
+            10 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
             constraint=dist.constraints.real
         )
 
         std_cell_size = pyro.param(
             "std_cell_size",
-            0.1 * torch.ones(self.n_labels, device=self.device),
+            0.1 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
             constraint=dist.constraints.positive
         )
 
         with pyro.plate("labels", self.n_labels, device=self.device):
             pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
+                # assert torch.isnan(alpha).sum() == 0, torch.isnan(alpha).nonzero(as_tuple=True)[0]
                 pyro.sample("theta", dist.Beta(alpha, beta))
 
 
