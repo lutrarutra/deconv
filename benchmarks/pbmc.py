@@ -25,7 +25,7 @@ def mkdir(path):
 
 PARAMS = {
     "dropout_type": ["separate", "shared", None],
-    "model_type": ["gamma", "beta", "nb", "static"],
+    "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True, False],
 }
 
@@ -98,18 +98,17 @@ def run_benchmark(outdir, adata, true_df, device):
             adata, cell_type_key="labels",
             dropout_type=dropout_type,
             model_type=model_type, sub_type_key=None,
-            layer="counts",
             device=device
         )
 
-        decon.fit_reference()
+        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts")
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
         decon.check_fit(path=os.path.join(out_dir, f"ref_fit_{suffix}.pdf"))
         plt.close()
 
-        proportions = decon.deconvolute(model_dropout=bulk_dropout).cpu()
+        proportions = decon.deconvolute(model_dropout=bulk_dropout, lrd=0.999, lr=0.1, num_epochs=1000).cpu()
         pd.DataFrame(proportions, index=adata.uns["bulk_samples"], columns=decon.cell_types).to_csv(
             os.path.join(out_dir, f"proportions_{suffix}.tsv"), sep="\t"
         )
@@ -125,6 +124,13 @@ def run_benchmark(outdir, adata, true_df, device):
             plt.close()
 
         # decon.deconvolution_module.save_model(os.path.join(out_dir, f"model_{suffix}"))
+        with open(os.path.join(outdir, "losses.txt"), "a") as f:
+            f.write(model_type + "_" + suffix)
+            f.write("\t")
+            f.write(str(decon.deconvolution_module.reference_loss))
+            f.write("\t")
+            f.write(str(decon.deconvolution_module.deconvolution_loss))
+            f.write("\n")
 
         with open(os.path.join(outdir, "done.json"), "w") as f:
             json.dump(done, f)
