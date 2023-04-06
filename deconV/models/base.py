@@ -60,13 +60,14 @@ class Base(ABC):
 
     def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts", fp_hack=False):
         pyro.clear_param_store()
+        pyro.set_rng_seed(0)
 
         if seed is not None:        
             pyro.util.set_rng_seed(seed)
 
         pyro.enable_validation(pyro_validation)
 
-        optim = pyro.optim.ClippedAdam(dict(lr=lr, lrd=lrd, betas=(0.9, 0.999)))
+        optim = pyro.optim.ClippedAdam(dict(lr=lr, lrd=lrd))
         guide = config_enumerate(self.ref_guide, "parallel", expand=True)
         svi = SVI(self.ref_model, guide, optim=optim, loss=Trace_ELBO())
         
@@ -107,9 +108,9 @@ class Base(ABC):
         
         def get_optim_params(param_name):
             if param_name == "cell_counts":
-                return dict(lr=lr, lrd=lrd, betas=(0.95, 0.999))
+                return dict(lr=lr, lrd=lrd)
             else:
-                return dict(lr=lr, lrd=lrd, betas=(0.95, 0.999))
+                return dict(lr=lr, lrd=lrd)
 
         pyro.clear_param_store()
         optim = pyro.optim.ClippedAdam(get_optim_params)

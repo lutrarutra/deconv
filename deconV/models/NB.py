@@ -227,7 +227,7 @@ class NB(Base):
             bulk_dist = dist.ZeroInflatedNegativeBinomial(
                 total_count=total_count.T,
                 probs=probs,
-                gate=dropout.T
+                gate=dropout
             )
         else:
             bulk_dist = dist.NegativeBinomial(

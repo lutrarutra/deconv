@@ -120,7 +120,7 @@ class Gamma(Base):
                 if self.ref_dropout_type == "separate":
                     dropout = torch.sum(proportions.unsqueeze(0) * dropout.unsqueeze(1), dim=-1)
                     
-                bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout.T).to_event(1)
+                bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout).to_event(1)
             else:
                 bulk_dist = dist.Poisson(rate=rate.T).to_event(1)
 

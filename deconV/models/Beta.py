@@ -23,6 +23,10 @@ class Beta(Base):
         self.alpha0 = 1.0 * torch.ones((self.n_genes, self.n_labels), device=self.device, dtype=torch.float64)
         self.beta0 = 50.0 * torch.ones((self.n_genes, self.n_labels), device=self.device, dtype=torch.float64)
 
+        self.mu_lib_size0 = 10 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64)
+        self.std_lib_size0 = 0.1 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64)
+
+
     def ref_model(self, sc_counts, labels):
         if self.ref_dropout_type == "separate":
             dropout_logits = pyro.param(
@@ -40,7 +44,7 @@ class Beta(Base):
             )
         elif self.ref_dropout_type is not None:
             raise ValueError("Unknown dropout type")
-
+        
         alpha = pyro.param(
             "alpha", self.alpha0,
             dist.constraints.positive
@@ -51,25 +55,23 @@ class Beta(Base):
             dist.constraints.positive
         )
 
-        mu_cell_size = pyro.param(
-            "mu_cell_size", 
-            10 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
-            constraint=dist.constraints.real
+        mu_lib_size = pyro.param(
+            "mu_lib_size", self.mu_lib_size0, 
+            constraint=dist.constraints.positive
         )
 
-        std_cell_size = pyro.param(
-            "std_cell_size",
-            0.1 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
+        std_lib_size = pyro.param(
+            "std_lib_size", self.std_lib_size0,
             constraint=dist.constraints.positive
         )
 
         with pyro.plate("labels", self.n_labels, device=self.device):
-            cell_size = pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
+            lib_size = pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
                 theta = pyro.sample("theta", dist.Beta(alpha, beta))
             
         with pyro.plate("obs", len(labels), device=self.device), poutine.scale(scale=1.0/len(labels)):
-            rate = theta[:, labels].T * cell_size[labels].unsqueeze(-1)
+            rate = theta[:, labels].T * lib_size[labels].unsqueeze(-1)
             
             if self.ref_dropout_type is not None:
                 obs_dist = dist.ZeroInflatedPoisson(
@@ -79,8 +81,9 @@ class Beta(Base):
                 obs_dist = dist.Poisson(
                     rate=rate
                 ).to_event(1)
-
-            pyro.sample("sc_obs", obs_dist, obs=sc_counts)
+            
+            pyro.sample("sc", obs_dist, obs=sc_counts)
+        
     
         
     def ref_guide(self, sc_counts, labels):
@@ -94,24 +97,22 @@ class Beta(Base):
             dist.constraints.positive
         )
 
-        mu_cell_size = pyro.param(
-            "mu_cell_size", 
-            10 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
-            constraint=dist.constraints.real
+        mu_lib_size = pyro.param(
+            "mu_lib_size", self.mu_lib_size0, 
+            constraint=dist.constraints.positive
         )
 
-        std_cell_size = pyro.param(
-            "std_cell_size",
-            0.1 * torch.ones(self.n_labels, device=self.device, dtype=torch.float64),
+        std_lib_size = pyro.param(
+            "std_lib_size", self.std_lib_size0,
             constraint=dist.constraints.positive
         )
 
         with pyro.plate("labels", self.n_labels, device=self.device):
-            pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
+            pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
-                # assert torch.isnan(alpha).sum() == 0, torch.isnan(alpha).nonzero(as_tuple=True)[0]
+                assert torch.isnan(alpha).sum() == 0, torch.isnan(alpha).nonzero(as_tuple=True)[0]
                 pyro.sample("theta", dist.Beta(alpha, beta))
-
+            
 
     def dec_model(self, bulk):
         n_samples = len(bulk)
@@ -131,18 +132,18 @@ class Beta(Base):
         alpha = self.params["alpha"]
         beta = self.params["beta"]
 
-        mu_cell_size = self.params["mu_cell_size"]
-        std_cell_size = self.params["std_cell_size"]
+        mu_lib_size = self.params["mu_lib_size"]
+        std_lib_size = self.params["std_lib_size"]
         
         with pyro.plate("labels", self.n_labels, device=self.device):
-            cell_size = pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
+            lib_size = pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
                 theta = pyro.sample("theta", dist.Beta(alpha, beta))
 
         with pyro.plate("samples", n_samples, device=self.device):
             proportions = pyro.sample("proportions", dist.Dirichlet(concentrations))
 
-            ct_rate = cell_size * theta
+            ct_rate = lib_size * theta
             rate = torch.sum(proportions.unsqueeze(0) * ct_rate.unsqueeze(1), dim=-1)
             rate = cell_counts * rate
 
@@ -150,8 +151,7 @@ class Beta(Base):
                 dropout = logits2probs(self.params["dropout_logits"])
                 if self.ref_dropout_type == "separate":
                     dropout = torch.sum(proportions.unsqueeze(0) * dropout.unsqueeze(1), dim=-1)
-                    
-                bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout.T).to_event(1)
+                bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout).to_event(1)
             else:
                 bulk_dist = dist.Poisson(rate=rate.T).to_event(1)
 
@@ -173,11 +173,11 @@ class Beta(Base):
         alpha = self.params["alpha"]
         beta = self.params["beta"]
 
-        mu_cell_size = self.params["mu_cell_size"]
-        std_cell_size = self.params["std_cell_size"]
+        mu_lib_size = self.params["mu_lib_size"]
+        std_lib_size = self.params["std_lib_size"]
 
         with pyro.plate("labels", self.n_labels, device=self.device):
-            pyro.sample("cell_size", dist.LogNormal(mu_cell_size, std_cell_size))
+            pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
                 pyro.sample("theta", dist.Beta(alpha, beta))
 
@@ -188,14 +188,14 @@ class Beta(Base):
         alpha = self.params["alpha"]
         beta = self.params["beta"]
 
-        mu_cell_size = self.params["mu_cell_size"]
-        std_cell_size = self.params["std_cell_size"]
+        mu_lib_size = self.params["mu_lib_size"]
+        std_lib_size = self.params["std_lib_size"]
 
-        cell_size = dist.LogNormal(mu_cell_size, std_cell_size).mean
+        lib_size = dist.Gamma(mu_lib_size, std_lib_size).mean
         theta = dist.Beta(alpha, beta).mean
 
         proportions = self.get_proportions()
-        ct_rate = cell_size * theta
+        ct_rate = lib_size * theta
         rate = torch.sum(proportions.unsqueeze(0) * ct_rate.unsqueeze(1), dim=-1)
         rate = self.get_cell_counts() * rate
 
@@ -218,10 +218,10 @@ class Beta(Base):
         b = self.params["beta"][gene_i, ct_i]
         theta = dist.Beta(a, b).sample((n_samples,))
 
-        mu_cell_size = self.params["mu_cell_size"][ct_i]
-        std_cell_size = self.params["std_cell_size"][ct_i]
-        cell_size = dist.LogNormal(mu_cell_size, std_cell_size).sample((n_samples,))
-        rate = theta * cell_size
+        mu_lib_size = self.params["mu_lib_size"][ct_i]
+        std_lib_size = self.params["std_lib_size"][ct_i]
+        lib_size = dist.Gamma(mu_lib_size, std_lib_size).sample((n_samples,))
+        rate = theta * lib_size
 
         if self.ref_dropout_type is not None:
             if self.ref_dropout_type == "separate":
