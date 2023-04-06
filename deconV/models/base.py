@@ -19,7 +19,7 @@ def logits2probs(logits):
     return 1.0 / (1.0 + (-logits).exp())
     
 class RefDataSet(torch.utils.data.Dataset):
-    def __init__(self, adata, label_key, layer="counts", device="cpu") -> None:
+    def __init__(self, adata, label_key, layer="counts", device="cpu", fp_hack=False) -> None:
         super().__init__()
         self.sc_counts = torch.tensor(adata.layers[layer], dtype=torch.float32, device=device)
 
@@ -30,10 +30,12 @@ class RefDataSet(torch.utils.data.Dataset):
 
         self.labels = torch.tensor(adata.obs[label_key].cat.codes.values, dtype=torch.long, device=device)
 
-        for label in np.unique(self.labels.cpu()):
-            mask = (self.sc_counts[self.labels == label,:].sum(0) == 0)
-            idx = (self.labels == label).nonzero(as_tuple=True)[0][0]
-            self.sc_counts[idx, mask] = 1
+        # Fixes floating point error; When all of the genes are zero gradients tend to become NaN
+        if fp_hack:
+            for label in np.unique(self.labels.cpu()):
+                mask = (self.sc_counts[self.labels == label,:].sum(0) == 0)
+                idx = (self.labels == label).nonzero(as_tuple=True)[0][0]
+                self.sc_counts[idx, mask] = 1
 
     def __len__(self):
         return len(self.sc_counts)
@@ -56,7 +58,7 @@ class Base(ABC):
         self.device = device
 
 
-    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts"):
+    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts", fp_hack=False):
         pyro.clear_param_store()
 
         if seed is not None:        
@@ -68,7 +70,7 @@ class Base(ABC):
         guide = config_enumerate(self.ref_guide, "parallel", expand=True)
         svi = SVI(self.ref_model, guide, optim=optim, loss=Trace_ELBO())
         
-        dataset = RefDataSet(self.adata, self.labels_key, device=self.device, layer=layer)
+        dataset = RefDataSet(self.adata, self.labels_key, device=self.device, layer=layer, fp_hack=fp_hack)
         if batch_size is None:
             batch_size = self.adata.n_obs
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
