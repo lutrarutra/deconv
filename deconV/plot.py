@@ -807,8 +807,13 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
         plt.show()
 
 def prediction_plot(decon, i, path=None):
-    est_bulk = np.log1p(decon.deconvolution_module.pseudo_bulk()[i,:].cpu().numpy())
-    true_bulk = np.log1p(decon.adata.varm["bulk"][:, i])
+    est = decon.deconvolution_module.pseudo_bulk()[i,:].cpu().numpy()
+    est_bulk = np.log1p(est)
+    true = decon.adata.varm["bulk"][:, i]
+    true_bulk = np.log1p(true)
+
+    rmse = ((true - est) ** 2).mean() ** 0.5
+    log_rmse = ((true_bulk - est_bulk) ** 2).mean() ** 0.5
 
     mu = np.log1p(decon.adata.layers["counts"].mean(0))
 
@@ -833,6 +838,7 @@ def prediction_plot(decon, i, path=None):
     ax.axhline(0, color="royalblue", linestyle="--", linewidth=1)
     ax.set_ylabel("log1p(bulk) - log1p(est bulk)")
     ax.set_xlabel("log1p(mean gene expression)")
+    ax.set_title(f"RMSE: {rmse:.2e} | log RMSE: {log_rmse:0.2f}")
     
     if path is not None:
         plt.savefig(path, bbox_inches="tight")
