@@ -20,11 +20,11 @@ class NB(Base):
     def __init__(self, adata, labels_key, dropout_type: Literal["separate", "shared", None] = "separate", device="cpu"):
         super().__init__(adata, labels_key, dropout_type, device)
 
-        self.mu_total_count0 = 5 * torch.ones((self.n_labels, self.n_genes), device=self.device, dtype=torch.float64)
-        self.std_total_count0 = 1 * torch.ones((self.n_labels, self.n_genes), device=self.device, dtype=torch.float64)
+        self.mu_total_count0 = 5 * torch.ones((self.n_labels, self.n_genes), device=self.device)
+        self.std_total_count0 = 1 * torch.ones((self.n_labels, self.n_genes), device=self.device)
 
-        self.alpha0 = 1.0 * torch.ones(self.n_genes, device=self.device, dtype=torch.float64)
-        self.beta0 = 50.0 * torch.ones(self.n_genes, device=self.device, dtype=torch.float64)
+        self.alpha0 = 1.0 * torch.ones(self.n_genes, device=self.device)
+        self.beta0 = 50.0 * torch.ones(self.n_genes, device=self.device)
 
 
     def ref_model(self, sc_counts, labels):
@@ -134,7 +134,7 @@ class NB(Base):
 
         cell_counts = pyro.param(
             "cell_counts",
-            1e7 * torch.ones(n_samples, device=self.device),
+            1e7 * torch.ones(n_samples, device=self.device, dtype=torch.float64),
             constraint=dist.constraints.positive
         )
 
@@ -148,7 +148,9 @@ class NB(Base):
             probs = pyro.sample("probs", dist.Beta(alpha, beta))
             with pyro.plate("labels", self.n_labels, device=self.device):
                 ct_total_count = pyro.sample("total_count", dist.LogNormal(mu_total_count, std_total_count))
-    
+
+        assert torch.isnan(probs).sum() == 0, torch.isnan(probs).nonzero(as_tuple=True)[0]
+        assert torch.isnan(ct_total_count).sum() == 0, torch.isnan(ct_total_count).nonzero(as_tuple=True)[0]
 
         with pyro.plate("samples", n_samples, device=self.device):
             proportions = pyro.sample("proportions", dist.Dirichlet(concentrations))

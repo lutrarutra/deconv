@@ -30,10 +30,10 @@ class RefDataSet(torch.utils.data.Dataset):
 
         self.labels = torch.tensor(adata.obs[label_key].cat.codes.values, dtype=torch.long, device=device)
 
-        # for label in np.unique(self.labels.cpu()):
-        #     mask = (self.sc_counts[self.labels == label,:].sum(0) == 0)
-        #     idx = (self.labels == label).nonzero(as_tuple=True)[0][0]
-        #     self.sc_counts[idx, mask] = 1
+        for label in np.unique(self.labels.cpu()):
+            mask = (self.sc_counts[self.labels == label,:].sum(0) == 0)
+            idx = (self.labels == label).nonzero(as_tuple=True)[0][0]
+            self.sc_counts[idx, mask] = 1
 
     def __len__(self):
         return len(self.sc_counts)
@@ -64,7 +64,7 @@ class Base(ABC):
 
         pyro.enable_validation(pyro_validation)
 
-        optim = pyro.optim.ClippedAdam(dict(lr=lr, lrd=lrd))
+        optim = pyro.optim.ClippedAdam(dict(lr=lr, lrd=lrd, betas=(0.9, 0.999)))
         guide = config_enumerate(self.ref_guide, "parallel", expand=True)
         svi = SVI(self.ref_model, guide, optim=optim, loss=Trace_ELBO())
         
@@ -105,9 +105,9 @@ class Base(ABC):
         
         def get_optim_params(param_name):
             if param_name == "cell_counts":
-                return dict(lr=lr, lrd=lrd)
+                return dict(lr=lr, lrd=lrd, betas=(0.95, 0.999))
             else:
-                return dict(lr=lr, lrd=lrd)
+                return dict(lr=lr, lrd=lrd, betas=(0.95, 0.999))
 
         pyro.clear_param_store()
         optim = pyro.optim.ClippedAdam(get_optim_params)
