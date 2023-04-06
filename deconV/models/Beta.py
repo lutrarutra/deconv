@@ -211,7 +211,7 @@ class Beta(Base):
             if dropout.dim() == 2:
                 dropout = dropout.T
                     
-            bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout.T)
+            bulk_dist = dist.ZeroInflatedPoisson(rate=rate.T, gate_logits=dropout)
         else:
             bulk_dist = dist.Poisson(rate=rate.T)
 
