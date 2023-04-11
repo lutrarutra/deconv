@@ -59,6 +59,8 @@ class DeconV:
             self.deconvolution_module = models.LogNormal(self.adata, self.label_key, dropout_type=dropout_type, device=device)
         elif self.model_type == "nb":
             self.deconvolution_module = models.NB(self.adata, self.label_key, dropout_type=dropout_type, device=device)
+        else:
+            raise ValueError("Unknown model type: {}".format(self.model_type))
 
     def fit_reference(self, lr=0.1, lrd=0.995, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts", fp_hack=False):
         self.deconvolution_module.fit_reference(

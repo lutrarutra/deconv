@@ -26,7 +26,7 @@ def combine(adata, bulk_df):
 
     adata.varm["bulk"] *= (adata.varm["pseudo"].sum() / adata.varm["bulk"].sum(0))
 
-    adata.varm["pseudo_factor"] = (np.log1p(adata.varm["bulk"]) - np.log1p(adata.varm["pseudo"]))
+    adata.varm["pseudo_factor"] = (np.log1p(adata.varm["bulk"]) - np.expand_dims(np.log1p(adata.varm["pseudo"]), -1))
 
     adata.uns["bulk_samples"] = bulk_df.columns.tolist()
 

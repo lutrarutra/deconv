@@ -33,7 +33,7 @@ def read_inputs(indir):
     reference_file = os.path.join(indir, "sc.tsv")
     reference_mdata_file = os.path.join(indir, "pdata.tsv")
     bulk_file = os.path.join(indir, "bulk.tsv")
-    cell_types = ["alpha", "delta", "gamma", "beta"]
+    cell_types = ["alpha", "delta", "gamma", "beta", "lognormal"]
     true_df = pd.read_csv(os.path.join(indir, "true.tsv"), sep="\t", index_col=0)
     true_df = true_df.reindex(sorted(true_df.columns), axis=1)
 
@@ -58,7 +58,7 @@ def read_inputs(indir):
     print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
 
     sc.pp.filter_cells(sadata, min_genes=200)
-    sc.pp.filter_genes(sadata, min_cells=3)
+    sc.pp.filter_genes(sadata, min_counts=100)
     adata = dv.tl.combine(sadata, bulk_df)
     del sadata
     scout.tl.scale_log_center(adata, target_sum=None, exclude_highly_expressed=True)
@@ -101,7 +101,7 @@ def run_benchmark(outdir, adata, true_df, device):
             device=device
         )
 
-        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts")
+        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=True)
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
