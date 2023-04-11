@@ -48,8 +48,8 @@ def read_inputs(indir):
     pheno_df = pheno_df.loc[common_cells, :].copy()
     sadata.obs["labels"] = pheno_df["cellType"].tolist()
     sadata.obs["labels"] = sadata.obs["labels"].astype("category")
-
     sadata = sadata[sadata.obs["labels"].astype("str").isin(cell_types), :].copy()
+    sadata.obs["labels"] = sadata.obs["labels"].cat.rename_categories(["MDA-MB-438", "MCF7", "HF"])
 
     print(sadata.obs.groupby("labels").size())
 
@@ -101,7 +101,7 @@ def run_benchmark(outdir, adata, true_df, device):
             device=device
         )
 
-        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=False)
+        decon.fit_reference(num_epochs=1000, lr=0.1, lrd=0.995, layer="counts", fp_hack=False)
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
