@@ -806,6 +806,8 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
     else:
         plt.show()
 
+    return rmse, mad, r
+
 def prediction_plot(decon, i, path=None):
     est = decon.deconvolution_module.pseudo_bulk()[i,:].cpu().numpy()
     est_bulk = np.log1p(est)

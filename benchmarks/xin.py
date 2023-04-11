@@ -115,7 +115,7 @@ def run_benchmark(outdir, adata, true_df, device):
 
         res_df = decon.get_results_df()
         res_df["true"] = true_df.melt()["value"]
-        dv.pl.xypredictions(res_df, path=os.path.join(out_dir, f"xy_{suffix}.pdf"))
+        rmse, mad, r = dv.pl.xypredictions(res_df, path=os.path.join(out_dir, f"xy_{suffix}.pdf"))
         plt.close()
         mkdir(os.path.join(out_dir, "pseudo"))
 
@@ -130,6 +130,12 @@ def run_benchmark(outdir, adata, true_df, device):
             f.write(str(decon.deconvolution_module.reference_loss))
             f.write("\t")
             f.write(str(decon.deconvolution_module.deconvolution_loss))
+            f.write("\t")
+            f.write(str(rmse))
+            f.write("\t")
+            f.write(str(mad))
+            f.write("\t")
+            f.write(str(r))
             f.write("\n")
 
         with open(os.path.join(outdir, "done.json"), "w") as f:
@@ -146,6 +152,11 @@ if __name__ ==  "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
+
+    mkdir(args.outdir)
+
+    with open(os.path.join(args.outdir, "losses.txt"), "a") as f:
+        f.write("distribution\tref_nll_loss\tdeconv_nll_loss\trmse\tmad\tr\n")
 
     run_benchmark(args.outdir, adata, true_df, device)
 
