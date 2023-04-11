@@ -25,7 +25,7 @@ def mkdir(path):
 
 PARAMS = {
     "dropout_type": ["separate", "shared", None],
-    "model_type": ["gamma", "beta", "nb", "static"],
+    "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True, False],
 }
 
