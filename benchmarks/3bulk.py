@@ -101,7 +101,7 @@ def run_benchmark(outdir, adata, true_df, device):
             device=device
         )
 
-        decon.fit_reference(num_epochs=1000, lr=0.1, lrd=0.995, layer="counts", fp_hack=False)
+        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.9975, layer="counts", fp_hack=False)
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
