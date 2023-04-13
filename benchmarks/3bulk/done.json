@@ -1,0 +1,1 @@
+[{"dropout_type": "separate", "model_type": "beta", "bulk_dropout": true}, {"dropout_type": "separate", "model_type": "beta", "bulk_dropout": false}, {"dropout_type": "separate", "model_type": "gamma", "bulk_dropout": true}, {"dropout_type": "separate", "model_type": "gamma", "bulk_dropout": false}]

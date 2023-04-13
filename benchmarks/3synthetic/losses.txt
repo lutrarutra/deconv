@@ -1,7 +1,4 @@
 distribution	ref_nll_loss	deconv_nll_loss	rmse	mad	r
-distribution	ref_nll_loss	deconv_nll_loss	rmse	mad	r
-distribution	ref_nll_loss	deconv_nll_loss	rmse	mad	r
-distribution	ref_nll_loss	deconv_nll_loss	rmse	mad	r
 beta_separate_bd	12509.17659528891	91276193.6151083	0.09842906019717863	0.08390498155680426	0.9305184685468322
 beta_separate	12509.17659528891	91832729.2220816	0.09885683839825357	0.0842103406563106	0.9296490746067146
 gamma_separate_bd	13241.6171875	68275656.3492792	0.07850492439633931	0.06688029964227721	0.9711354089175662
