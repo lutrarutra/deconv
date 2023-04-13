@@ -769,25 +769,26 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
     mad = (df["true"] - df["est"]).abs().mean()
     r = df["true"].corr(df["est"])
     
-    f, ax = plt.subplots(figsize=(8, 8), dpi=100)
+    f, ax = plt.subplots(figsize=figsize, dpi=dpi)
     
     if "min" in df.columns:
         ax.errorbar(
             df["true"], df["est"], yerr=df[["min", "max"]].values.T,
             fmt=",", alpha=.7, zorder=1, c="#c3c3c3",
-            label="+/- sd", capsize=2
+            label="95% CI", capsize=2
         )
 
     sns.scatterplot(
         data=df,
         x="true",
         y="est",
-        hue="cell_type",
-        style="sample",
+        hue=hue,
+        style=style,
         edgecolor=(0, 0, 0, 0.8),
         color=(1, 1, 1, 0),
         linewidth=1,
         zorder=2,
+        s=80,
     ).set_title(f"RMSE: {rmse:0.2f} MAD: {mad:0.2f} R: {r:0.2f}")
 
     ax.set_xlabel("True Proportion")
@@ -798,7 +799,7 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
 
 
     ax.plot([0, 1], [0, 1], color="royalblue", label="y=x")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=1).remove()
 
     if path:
         plt.savefig(path, bbox_inches="tight")
