@@ -32,11 +32,11 @@ PARAMS = {
 def read_inputs(indir):
     reference_file = os.path.join(indir, "sc.tsv")
     reference_mdata_file = os.path.join(indir, "pdata.tsv")
-    bulk_file = os.path.join(indir, "bulk.tsv")
+    bulk_file = os.path.join(indir, "synthetic10.csv")
 
     cell_types = ["0", "1", "2"]
 
-    true_df = pd.read_csv(os.path.join(indir, "proportions.csv"), sep=",", index_col=0)
+    true_df = pd.read_csv(os.path.join(indir, "synthetic10_proportions.csv"), sep=",", index_col=0)
     true_df = true_df.reindex(sorted(true_df.columns), axis=1)
 
     # sadata = sc.read_h5ad(reference_file)
@@ -53,7 +53,7 @@ def read_inputs(indir):
 
     print(sadata.obs.groupby("labels").size())
 
-    bulk_df = pd.read_csv(bulk_file, sep="\t", index_col=0)
+    bulk_df = pd.read_csv(bulk_file, sep=",", index_col=0)
     # if bulk_df.iloc[:,0].dtype == "O":
     #     bulk_df.set_index(bulk_df.columns[0], inplace=True)
     print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
@@ -101,7 +101,7 @@ def run_benchmark(outdir, adata, true_df, device):
             device=device
         )
 
-        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=True)
+        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.9975, layer="counts", fp_hack=False)
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
