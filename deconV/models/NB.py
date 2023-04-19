@@ -120,9 +120,6 @@ class NB(Base):
             with pyro.plate("labels", self.n_labels, device=self.device):
                 pyro.sample("total_count", dist.LogNormal(mu_total_count, std_total_count))
 
-        # with pyro.plate("genes", self.n_genes, device=self.device):
-        #     pyro.sample("probs", dist.Beta(alpha, beta))
-
     def dec_model(self, bulk):
         n_samples = len(bulk)
 
@@ -148,9 +145,6 @@ class NB(Base):
             probs = pyro.sample("probs", dist.Beta(alpha, beta))
             with pyro.plate("labels", self.n_labels, device=self.device):
                 ct_total_count = pyro.sample("total_count", dist.LogNormal(mu_total_count, std_total_count))
-
-        assert torch.isnan(probs).sum() == 0, torch.isnan(probs).nonzero(as_tuple=True)[0]
-        assert torch.isnan(ct_total_count).sum() == 0, torch.isnan(ct_total_count).nonzero(as_tuple=True)[0]
 
         with pyro.plate("samples", n_samples, device=self.device):
             proportions = pyro.sample("proportions", dist.Dirichlet(concentrations))
@@ -199,8 +193,6 @@ class NB(Base):
             with pyro.plate("labels", self.n_labels, device=self.device):
                 pyro.sample("total_count", dist.LogNormal(mu_total_count, std_total_count))
         
-        # with pyro.plate("genes", self.n_genes, device=self.device):
-        #     pyro.sample("probs", dist.Beta(alpha, beta))
 
     def pseudo_bulk(self):
         if self.concentrations is None:
@@ -280,4 +272,3 @@ class NB(Base):
         ax.hist(x, bins=bins, density=True, alpha=0.6, color='orange')
         ax.axvline(gex.mean(), color='royalblue')
         return ax
-    

@@ -72,9 +72,10 @@ class Base(ABC):
         svi = SVI(self.ref_model, guide, optim=optim, loss=Trace_ELBO())
         
         dataset = RefDataSet(self.adata, self.labels_key, device=self.device, layer=layer, fp_hack=fp_hack)
+
         if batch_size is None:
             batch_size = self.adata.n_obs
-        loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
 
         pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
         for epoch in pbar:
@@ -119,10 +120,13 @@ class Base(ABC):
 
         svi = SVI(self.dec_model, guide, optim=optim, loss=Trace_ELBO())
 
-        pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+        if progress:
+            pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+        else:
+            pbar = range(num_epochs)
+
         for epoch in pbar:
             self.deconvolution_loss = svi.step(bulk)
-
             if progress:
                 pbar.set_postfix(
                     loss=f"{self.deconvolution_loss:.2e}",

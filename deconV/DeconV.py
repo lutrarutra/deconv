@@ -36,7 +36,7 @@ class DeconV:
         self.adata = adata
 
         self.cell_type_key = cell_type_key
-        self.cell_types = self.adata.obs[cell_type_key].astype(str).astype("category").cat.categories.tolist()
+        self.cell_types = self.adata.obs[cell_type_key].astype("category").cat.categories.tolist()
         self.n_cell_types = len(self.cell_types)
 
         self.sub_type_key = sub_type_key
@@ -81,7 +81,12 @@ class DeconV:
             num_epochs=num_epochs,
             progress=progress
         )
+        return self.get_proportions()
 
+    def get_proportions(self):
+        if self.deconvolution_module.concentrations is None:
+            raise ValueError("Please run deconvolute() first.")
+        
         proportions = self.deconvolution_module.get_proportions()
         if self.use_sub_types:
             proportions = self.sum_sub_proportions(proportions)
@@ -106,19 +111,19 @@ class DeconV:
 
             _min = pd.DataFrame(
                 limits[:, :, 0],
-                columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+                columns=self.cell_types,
                 index=self.adata.uns["bulk_samples"]
             ).reset_index().melt(id_vars="index")
 
             _max = pd.DataFrame(
                 limits[:, :, 1],
-                columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+                columns=self.cell_types,
                 index=self.adata.uns["bulk_samples"]
             ).reset_index().melt(id_vars="index")
 
         res_df = pd.DataFrame(
             proportions,
-            columns=self.adata.obs[self.cell_type_key].cat.categories.to_list(),
+            columns=self.cell_types,
             index=self.adata.uns["bulk_samples"]
         ).reset_index().melt(id_vars="index")
 

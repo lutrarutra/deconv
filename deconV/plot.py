@@ -764,7 +764,7 @@ def scatter_check(
         plt.show()
 
 
-def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, path=None, log=False):
+def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, path=None, log=False, legend=True):
     rmse = ((df["true"] - df["est"]) ** 2).mean() ** 0.5
     mad = (df["true"] - df["est"]).abs().mean()
     r = df["true"].corr(df["est"])
@@ -799,7 +799,10 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
 
 
     ax.plot([0, 1], [0, 1], color="royalblue", label="y=x")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=1).remove()
+
+    _legend = plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=2)
+    if legend is False:
+        _legend.remove()
 
     if path:
         plt.savefig(path, bbox_inches="tight")
