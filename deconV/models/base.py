@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 
 from matplotlib import pyplot as plt
+import scipy
 
 import pickle
 
@@ -21,9 +22,14 @@ def logits2probs(logits):
 class RefDataSet(torch.utils.data.Dataset):
     def __init__(self, adata, label_key, layer="counts", device="cpu", fp_hack=False) -> None:
         super().__init__()
-        self.sc_counts = torch.tensor(adata.layers[layer], dtype=torch.float32, device=device)
+        if scipy.sparse.issparse(adata.layers[layer]):
+            x = adata.layers[layer].toarray()
+        else:
+            x = adata.layers[layer]
 
-        if not np.equal(np.mod(adata.layers[layer], 1), 0).all():
+        self.sc_counts = torch.tensor(x, dtype=torch.float32, device=device)
+        
+        if not np.equal(np.mod(x, 1), torch.tensor(0.0)).all():
             print("Warning: single-cell counts are not integers, make sure you provided the correct layer with raw counts.")
             print("Rounding counts to integers.")
             self.sc_counts = (self.sc_counts + torch.tensor(1e-8)).round()
