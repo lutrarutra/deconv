@@ -73,9 +73,10 @@ class DeconV:
             fp_hack=fp_hack
         )
 
-    def deconvolute(self, model_dropout=True, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
+    def deconvolute(self, model_dropout=True, ignore_genes=None, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
         self.deconvolution_module.deconvolute(
             model_dropout=model_dropout,
+            ignore_genes=ignore_genes,
             bulk=bulk,
             lr=lr, lrd=lrd,
             num_epochs=num_epochs,
@@ -101,7 +102,7 @@ class DeconV:
 
         proportions = self.deconvolution_module.get_proportions().cpu()
         if self.use_sub_types:
-            proportions = self.sum_sub_proportions(proportions).cpu()
+            proportions = self.sum_sub_proportions(proportions)
         else:
             for i in range(self.n_bulk_samples):
                 p_dist = dist.Dirichlet(self.deconvolution_module.concentrations[i])
@@ -148,7 +149,7 @@ class DeconV:
             else:
                 d[cell_type] += sub_proportions[:, i]
 
-        return np.array([d[cell_type] for cell_type in self.cell_types]).T
+        return np.array([d[cell_type].cpu().numpy() for cell_type in self.cell_types]).T
     
     def check_fit(self, path=None):
         f, ax = plt.subplots(self.n_labels, self.n_labels, figsize=(20, 20), dpi=100)

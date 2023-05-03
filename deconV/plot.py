@@ -800,7 +800,7 @@ def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, 
 
     ax.plot([0, 1], [0, 1], color="royalblue", label="y=x")
 
-    _legend = plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=2)
+    _legend = plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=1)
     if legend is False:
         _legend.remove()
 

@@ -99,7 +99,7 @@ class Base(ABC):
         for param in pyro.get_param_store():
             self.params[str(param)] = pyro.param(param).clone().detach()
 
-    def deconvolute(self, model_dropout, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
+    def deconvolute(self, model_dropout, ignore_genes=None, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
         assert self.params is not None, "You must fit the reference first"
         if model_dropout and self.ref_dropout_type is None:
             raise ValueError("You must fit the reference with dropout to deconvolute with dropout")
@@ -110,6 +110,19 @@ class Base(ABC):
             bulk = (torch.tensor(self.adata.varm["bulk"].T, dtype=torch.float32, device=self.device)).round()
         if isinstance(bulk, np.ndarray):
             bulk = torch.tensor(bulk, dtype=torch.float32, device=self.device).round()
+        
+        _params = dict()
+        if ignore_genes is not None:
+            mask = torch.tensor(~self.adata.var.index.isin(ignore_genes), dtype=torch.bool, device=self.device)
+            _n_genes = self.n_genes
+            self.n_genes = mask.sum()
+
+            for key in self.params.keys():
+                _params[key] = self.params[key].clone()
+                print(self.params[key].shape)
+                self.params[key] = self.params[key][mask, :]
+
+            bulk = bulk[:, mask]
 
         assert bulk.shape[1] == self.n_genes, "The bulk data must have the same number of genes as the reference data"
         
@@ -141,6 +154,11 @@ class Base(ABC):
             
         self.concentrations = pyro.param("concentrations").clone().detach()
         self.cell_counts = pyro.param("cell_counts").clone().detach()
+
+        if ignore_genes is not None:
+            self.n_genes = _n_genes
+            for key in self.params.keys():
+                self.params[key] = _params[key].clone()
 
     def get_proportions(self):
         if self.concentrations is None:
