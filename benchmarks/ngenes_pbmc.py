@@ -27,27 +27,23 @@ PARAMS = {
     "dropout_type": ["separate"],
     "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True],
-    "n_genes": [15000, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
+    "n_genes": [13300, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 }
 
 def read_inputs(indir):
-    reference_file = os.path.join(indir, "sc.tsv")
-    reference_mdata_file = os.path.join(indir, "pdata.tsv")
+    reference_file = os.path.join(indir, "sc.h5ad")
     bulk_file = os.path.join(indir, "bulk.tsv")
-    cell_types = ["alpha", "delta", "gamma", "beta", "lognormal"]
+    cell_types = [
+        'T CD4', 'Monocytes',
+        'B cells', 'T CD8',
+        'NK', 'Monocytes',
+        'unknown', 'unknown']
     true_df = pd.read_csv(os.path.join(indir, "true.tsv"), sep="\t", index_col=0)
     true_df = true_df.reindex(sorted(true_df.columns), axis=1)
 
-    sadata = dv.tl.read_data(reference_file)
-
-    pheno_df = pd.read_csv(reference_mdata_file, sep="\t", index_col=0)
-    pheno_df.index.name = None
-    common_cells = list(set(pheno_df.index.tolist()) & set(sadata.obs_names.tolist()))
-
-    sadata = sadata[common_cells, :].copy()
-    pheno_df = pheno_df.loc[common_cells, :].copy()
-    sadata.obs["labels"] = pheno_df["cellType"].tolist()
-    sadata.obs["labels"] = sadata.obs["labels"].astype("category")
+    sadata = sc.read_h5ad(reference_file)
+    sadata.X = sadata.X.astype("float32").toarray()
+    sadata.var.set_index("gene_ids", inplace=True)
 
     sadata = sadata[sadata.obs["labels"].astype("str").isin(cell_types), :].copy()
 
@@ -56,15 +52,17 @@ def read_inputs(indir):
     bulk_df = pd.read_csv(bulk_file, sep="\t", index_col=None)
     if bulk_df.iloc[:,0].dtype == "O":
         bulk_df.set_index(bulk_df.columns[0], inplace=True)
+
+    bulk_df.index = bulk_df.index.str.split(".").str[0]
+    bulk_df = bulk_df[~bulk_df.index.duplicated(keep=False)]
     print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
 
     sc.pp.filter_cells(sadata, min_genes=200)
-    sc.pp.filter_genes(sadata, min_counts=100)
+    sc.pp.filter_genes(sadata, min_cells=3)
     adata = dv.tl.combine(sadata, bulk_df)
     del sadata
     scout.tl.scale_log_center(adata, target_sum=None, exclude_highly_expressed=True)
     return adata, true_df
-
 
 def run_benchmark(outdir, adata, true_df, device):
     ps = list(itertools.product(*PARAMS.values()))
@@ -119,13 +117,7 @@ def run_benchmark(outdir, adata, true_df, device):
         res_df["true"] = true_df.melt()["value"]
         rmse, mad, r = dv.pl.xypredictions(res_df, path=os.path.join(out_dir, f"xy_{suffix}.pdf"))
         plt.close()
-        # mkdir(os.path.join(out_dir, "pseudo"))
 
-        # for i in range(decon.n_bulk_samples):
-        #     dv.pl.prediction_plot(decon, i, os.path.join(out_dir, "pseudo", f"sample_{i}_{suffix}.pdf"))
-        #     plt.close()
-
-        # decon.deconvolution_module.save_model(os.path.join(out_dir, f"model_{suffix}"))
         with open(os.path.join(outdir, "losses.txt"), "a") as f:
             f.write(model_type + "_" + suffix)
             f.write("\t")
