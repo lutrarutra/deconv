@@ -121,7 +121,7 @@ class Base(ABC):
                 _params[key] = self.params[key].clone()
 
                 if mask.shape[0] == self.params[key].shape[0]:
-                    self.params[key] = self.params[key][mask,:]
+                    self.params[key] = self.params[key][mask]
                 elif self.params[key].dim() > 1 and mask.shape[0] == self.params[key].shape[1]:
                     self.params[key] = self.params[key][:,mask]
 
