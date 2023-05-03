@@ -68,7 +68,8 @@ class Beta(Base):
         with pyro.plate("labels", self.n_labels, device=self.device):
             lib_size = pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
-                theta = pyro.sample("theta", dist.Beta(alpha, beta))
+                theta = pyro.sample("theta", dist.Beta(alpha, beta)).clamp(min=1e-20)
+
             
         with pyro.plate("obs", len(labels), device=self.device), poutine.scale(scale=1.0/len(labels)):
             rate = theta[:, labels].T * lib_size[labels].unsqueeze(-1)
@@ -110,8 +111,7 @@ class Beta(Base):
         with pyro.plate("labels", self.n_labels, device=self.device):
             pyro.sample("lib_size", dist.Gamma(mu_lib_size, std_lib_size))
             with pyro.plate("genes", self.n_genes, device=self.device):
-                assert torch.isnan(alpha).sum() == 0, torch.isnan(alpha).nonzero(as_tuple=True)[0]
-                pyro.sample("theta", dist.Beta(alpha, beta))
+                theta = pyro.sample("theta", dist.Beta(alpha, beta))
             
 
     def dec_model(self, bulk):
