@@ -92,10 +92,12 @@ def run_benchmark(outdir, adata, true_df, device):
 
         out_dir = os.path.join(outdir, model_type)
         mkdir(out_dir)
-        sc.pp.highly_variable_genes(adata, n_top_genes=n_genes, subset=False)
+
+        idx = np.arange(0, adata.n_vars)
+        np.random.shuffle(idx)
         
         decon = dv.DeconV(
-            adata[:, adata.var["highly_variable"]], cell_type_key="labels",
+            adata[:, idx[:n_genes]], cell_type_key="labels",
             dropout_type=dropout_type,
             model_type=model_type, sub_type_key=None,
             device=device
