@@ -25,9 +25,9 @@ def mkdir(path):
 
 PARAMS = {
     "dropout_type": ["separate"],
-    "model_type": ["gamma", "beta", "nb"],
+    "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True],
-    "n_genes": [12500, 10000, 7500, 5000, 2500, 1000, 500, 100]
+    "n_genes": [15000, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 }
 
 def read_inputs(indir):
@@ -119,11 +119,11 @@ def run_benchmark(outdir, adata, true_df, device):
         res_df["true"] = true_df.melt()["value"]
         rmse, mad, r = dv.pl.xypredictions(res_df, path=os.path.join(out_dir, f"xy_{suffix}.pdf"))
         plt.close()
-        mkdir(os.path.join(out_dir, "pseudo"))
+        # mkdir(os.path.join(out_dir, "pseudo"))
 
-        for i in range(decon.n_bulk_samples):
-            dv.pl.prediction_plot(decon, i, os.path.join(out_dir, "pseudo", f"sample_{i}_{suffix}.pdf"))
-            plt.close()
+        # for i in range(decon.n_bulk_samples):
+        #     dv.pl.prediction_plot(decon, i, os.path.join(out_dir, "pseudo", f"sample_{i}_{suffix}.pdf"))
+        #     plt.close()
 
         # decon.deconvolution_module.save_model(os.path.join(out_dir, f"model_{suffix}"))
         with open(os.path.join(outdir, "losses.txt"), "a") as f:
