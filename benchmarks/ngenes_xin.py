@@ -27,8 +27,8 @@ PARAMS = {
     "dropout_type": ["separate"],
     "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True],
-    "n_genes": [15000, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 }
+N_GENES = [15000, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 
 def read_inputs(indir):
     reference_file = os.path.join(indir, "sc.tsv")
@@ -74,8 +74,8 @@ def run_benchmark(outdir, adata, true_df, device):
         model_type = params["model_type"]
         dropout_type = params["dropout_type"]
         bulk_dropout = params["bulk_dropout"]
-        n_genes = params["n_genes"]
-        print(f"Model {i+1}/{len(ps)}: {' '.join([f'{k}: {v},' for k,v in params.items()])}")
+
+        print(f"Model {(i+1)}/{len(ps)}: {' '.join([f'{k}: {v},' for k,v in params.items()])}")
 
         if os.path.exists(os.path.join(outdir, "done.json")):
             with open(os.path.join(outdir, "done.json"), "r") as f:
@@ -104,33 +104,38 @@ def run_benchmark(outdir, adata, true_df, device):
 
         decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=True)
 
-        for ii in range(10):
-            idx = np.arange(0, adata.n_vars)
-            np.random.shuffle(idx)
-            ignore_genes = adata.var_names[~adata.var.index.isin(adata.var_names[idx[:n_genes]])]
+        for n_genes in N_GENES:
+            pbar = tqdm.tqdm(range(20), desc="Replicate", bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+            pbar.set_postfix(dict(iter=f"{N_GENES.index(n_genes)+1}/{len(N_GENES)}", n_genes=n_genes))
 
-            decon.deconvolute(model_dropout=bulk_dropout, ignore_genes=ignore_genes, lrd=0.999, lr=0.1, num_epochs=1000).cpu()
+            for ii in pbar:
+                idx = np.arange(0, adata.n_vars)
+                np.random.shuffle(idx)
+                ignore_genes = adata.var_names[~adata.var.index.isin(adata.var_names[idx[:n_genes]])]
 
-            res_df = decon.get_results_df()
-            res_df["true"] = true_df.melt()["value"]
-            rmse, mad, r = dv.pl.xypredictions(res_df)
-            plt.close()
-        
-            suffix = f"n{n_genes}_{ii}"
+                decon.deconvolute(model_dropout=bulk_dropout, ignore_genes=ignore_genes, lrd=0.999, lr=0.1, num_epochs=1000, progress=False)
 
-            with open(os.path.join(outdir, "losses.txt"), "a") as f:
-                f.write(model_type + "_" + suffix)
-                f.write("\t")
-                f.write(str(decon.deconvolution_module.reference_loss))
-                f.write("\t")
-                f.write(str(decon.deconvolution_module.deconvolution_loss))
-                f.write("\t")
-                f.write(str(rmse))
-                f.write("\t")
-                f.write(str(mad))
-                f.write("\t")
-                f.write(str(r))
-                f.write("\n")
+                res_df = decon.get_results_df()
+                res_df["true"] = true_df.melt()["value"]
+                rmse, mad, r = dv.pl.xypredictions(res_df)
+                plt.close()
+            
+                suffix = f"n{n_genes}_{ii}"
+
+                with open(os.path.join(outdir, "losses.txt"), "a") as f:
+                    f.write(model_type + "_" + suffix)
+                    f.write("\t")
+                    f.write(str(decon.deconvolution_module.reference_loss))
+                    f.write("\t")
+                    f.write(str(decon.deconvolution_module.deconvolution_loss))
+                    f.write("\t")
+                    f.write(str(rmse))
+                    f.write("\t")
+                    f.write(str(mad))
+                    f.write("\t")
+                    f.write(str(r))
+                    f.write("\n")
+
 
         with open(os.path.join(outdir, "done.json"), "w") as f:
             json.dump(done, f)

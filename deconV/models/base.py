@@ -119,8 +119,11 @@ class Base(ABC):
 
             for key in self.params.keys():
                 _params[key] = self.params[key].clone()
-                print(self.params[key].shape)
-                self.params[key] = self.params[key][mask, :]
+
+                if mask.shape[0] == self.params[key].shape[0]:
+                    self.params[key] = self.params[key][mask,:]
+                elif self.params[key].dim() > 1 and mask.shape[0] == self.params[key].shape[1]:
+                    self.params[key] = self.params[key][:,mask]
 
             bulk = bulk[:, mask]
 

@@ -14,7 +14,6 @@ import numpy as np
 import scanpy as sc
 import scvi
 import seaborn as sns
-import tqdm
 import scout
 
 import itertools
@@ -27,8 +26,9 @@ PARAMS = {
     "dropout_type": ["separate"],
     "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True],
-    "n_genes": [13300, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 }
+
+N_GENES = [13300, 12500, 10000, 7500, 5000, 4000, 3000, 2500, 2000, 1500, 1000, 750, 500, 250, 100]
 
 def read_inputs(indir):
     reference_file = os.path.join(indir, "sc.h5ad")
@@ -72,7 +72,7 @@ def run_benchmark(outdir, adata, true_df, device):
         model_type = params["model_type"]
         dropout_type = params["dropout_type"]
         bulk_dropout = params["bulk_dropout"]
-        n_genes = params["n_genes"]
+
         print(f"Model {i+1}/{len(ps)}: {' '.join([f'{k}: {v},' for k,v in params.items()])}")
 
         if os.path.exists(os.path.join(outdir, "done.json")):
@@ -97,7 +97,7 @@ def run_benchmark(outdir, adata, true_df, device):
         np.random.shuffle(idx)
         
         decon = dv.DeconV(
-            adata[:, idx[:n_genes]], cell_type_key="labels",
+            adata, cell_type_key="labels",
             dropout_type=dropout_type,
             model_type=model_type, sub_type_key=None,
             device=device
@@ -105,34 +105,38 @@ def run_benchmark(outdir, adata, true_df, device):
 
         decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=True)
 
-        suffix = f"n{n_genes}"
+        for n_genes in N_GENES:
+            pbar = tqdm.tqdm(range(20), desc="Replicate", bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+            pbar.set_postfix(dict(iter=f"{N_GENES.index(n_genes)+1}/{len(N_GENES)}", n_genes=n_genes))
 
-        decon.check_fit(path=os.path.join(out_dir, f"ref_fit_{suffix}.pdf"))
-        plt.close()
+            for ii in pbar:
+                idx = np.arange(0, adata.n_vars)
+                np.random.shuffle(idx)
+                ignore_genes = adata.var_names[~adata.var.index.isin(adata.var_names[idx[:n_genes]])]
 
-        proportions = decon.deconvolute(model_dropout=bulk_dropout, lrd=0.999, lr=0.1, num_epochs=1000).cpu()
-        pd.DataFrame(proportions, index=adata.uns["bulk_samples"], columns=decon.cell_types).to_csv(
-            os.path.join(out_dir, f"proportions_{suffix}.tsv"), sep="\t"
-        )
+                decon.deconvolute(model_dropout=bulk_dropout, ignore_genes=ignore_genes, lrd=0.999, lr=0.1, num_epochs=1000, progress=False)
 
-        res_df = decon.get_results_df()
-        res_df["true"] = true_df.melt()["value"]
-        rmse, mad, r = dv.pl.xypredictions(res_df, path=os.path.join(out_dir, f"xy_{suffix}.pdf"))
-        plt.close()
+                res_df = decon.get_results_df()
+                res_df["true"] = true_df.melt()["value"]
+                rmse, mad, r = dv.pl.xypredictions(res_df)
+                plt.close()
+            
+                suffix = f"n{n_genes}_{ii}"
 
-        with open(os.path.join(outdir, "losses.txt"), "a") as f:
-            f.write(model_type + "_" + suffix)
-            f.write("\t")
-            f.write(str(decon.deconvolution_module.reference_loss))
-            f.write("\t")
-            f.write(str(decon.deconvolution_module.deconvolution_loss))
-            f.write("\t")
-            f.write(str(rmse))
-            f.write("\t")
-            f.write(str(mad))
-            f.write("\t")
-            f.write(str(r))
-            f.write("\n")
+                with open(os.path.join(outdir, "losses.txt"), "a") as f:
+                    f.write(model_type + "_" + suffix)
+                    f.write("\t")
+                    f.write(str(decon.deconvolution_module.reference_loss))
+                    f.write("\t")
+                    f.write(str(decon.deconvolution_module.deconvolution_loss))
+                    f.write("\t")
+                    f.write(str(rmse))
+                    f.write("\t")
+                    f.write(str(mad))
+                    f.write("\t")
+                    f.write(str(r))
+                    f.write("\n")
+
 
         with open(os.path.join(outdir, "done.json"), "w") as f:
             json.dump(done, f)
