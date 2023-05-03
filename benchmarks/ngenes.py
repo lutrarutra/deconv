@@ -157,8 +157,9 @@ if __name__ ==  "__main__":
 
     mkdir(args.outdir)
 
-    with open(os.path.join(args.outdir, "losses.txt"), "a") as f:
-        f.write("distribution\tref_nll_loss\tdeconv_nll_loss\trmse\tmad\tr\n")
+    if not os.path.exists(os.path.join(args.outdir, "losses.txt")):    
+        with open(os.path.join(args.outdir, "losses.txt"), "a") as f:
+            f.write("distribution\tref_nll_loss\tdeconv_nll_loss\trmse\tmad\tr\n")
 
     run_benchmark(args.outdir, adata, true_df, device)
 
