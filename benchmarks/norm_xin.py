@@ -27,7 +27,7 @@ PARAMS = {
     "dropout_type": ["separate"],
     "model_type": ["gamma", "beta", "nb", "static", "lognormal"],
     "bulk_dropout": [True],
-    "target_sum": [False, None, 1e6],
+    "target_sum": ["lognorm", False, None, 1e6],
     "exclude_highly_expressed": [True, False],
 }
 
@@ -80,6 +80,9 @@ def run_benchmark(outdir, adata, true_df, device):
 
         if target_sum == False:
             layer = "counts"
+        elif target_sum == "lognorm":
+            layer = "X"
+            target_sum = None
         else:
             layer = "ncounts"
         
@@ -134,7 +137,12 @@ def run_benchmark(outdir, adata, true_df, device):
         elif target_sum == False:
             normalisation = "raw"
         elif target_sum == None:
-            normalisation = "median"
+            if layer == "ncounts":
+                normalisation = "median"
+            elif layer == "X":
+                normalisation = "lognorm"
+            else:
+                assert False, "Not implemented"
         else:
             normalisation = f"{target_sum:e}"
 

@@ -22,10 +22,16 @@ def logits2probs(logits):
 class RefDataSet(torch.utils.data.Dataset):
     def __init__(self, adata, label_key, layer="counts", device="cpu", fp_hack=False) -> None:
         super().__init__()
-        if scipy.sparse.issparse(adata.layers[layer]):
-            x = adata.layers[layer].toarray()
+
+        if layer == "X" or layer == None:
+            _layer = adata.X
         else:
-            x = adata.layers[layer]
+            _layer = adata.layers[layer]
+
+        if scipy.sparse.issparse(_layer):
+            x = _layer.toarray()
+        else:
+            x = _layer
 
         self.sc_counts = torch.tensor(x, dtype=torch.float32, device=device)
         
