@@ -1,6 +1,6 @@
 # DeconV: Probabilistic Cell Type Deconvolution from Bulk RNA-seq
 
-![](https://github.com/lutrarutra/deconv/blob/main/deconV/banner.png?raw=true)
+![](https://github.com/lutrarutra/deconv/blob/main/deconV/figures/banner.png?raw=true)
 
 ## How to run? (Tested with Python 3.10.9)
 
