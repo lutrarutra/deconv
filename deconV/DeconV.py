@@ -26,7 +26,7 @@ import scout
 class DeconV:
     def __init__(
             self, adata, cell_type_key,
-            model_type: Literal["static", "beta", "gamma", "lognormal", "nb"] = "static",
+            model_type: Literal["static", "beta", "gamma", "lognormal", "nb"] = "gamma",
             dropout_type: Literal["separate", "shared", None] = "separate",
             sub_type_key=None, device="cpu"
         ):
