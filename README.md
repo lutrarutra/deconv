@@ -1,15 +1,11 @@
-# How to run?
+# DeconV: Probabilistic Cell Type Deconvolution from Bulk RNA-seq
 
-## 1. Install dependencies
-`conda env create -n deconv --file environment.yaml`
+![](https://github.com/lutrarutra/deconv/blob/main/deconV/banner.png?raw=true)
 
-## 2. Activate environment
-`conda activate deconv`
+## How to run? (Tested with Python 3.10.9)
 
-## 3. Install deconv
-`pip install -e .`
-
-## 4. Change parameters in 'params.yaml'
-
-## 5. Run the script
-`python run.py`
+1. Install dependencies
+    - `pip install -r requirements.txt`
+2. Install DeconV
+    - `pip install -e .`
+3. Run as a notebook or Python script. See `examples/` for examples.
