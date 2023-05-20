@@ -1,6 +1,6 @@
 # Benchmark branch of [DeconV](https://github.com/lutrarutra/deconv/)
 
-![](https://github.com/lutrarutra/deconv/tree/benchmark/benchmarks/figures/benchmarks.png?raw=true)
+![](https://github.com/lutrarutra/deconv/blob/benchmark/benchmarks/figures/benchmarks.png?raw=true)
 
 # DeconV: Probabilistic Cell Type Deconvolution from Bulk RNA-seq
 
