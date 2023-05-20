@@ -1,5 +1,7 @@
 # DeconV: Probabilistic Cell Type Deconvolution from Bulk RNA-seq
 
+## Implemented with Pyro and PyTorch. Integrates with ScanPy using AnnData-object.
+
 ![](https://github.com/lutrarutra/deconv/blob/main/deconV/figures/banner.png?raw=true)
 
 ## How to run? (Tested with Python 3.10.9)
