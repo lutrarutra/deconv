@@ -62,7 +62,7 @@ class DeconV:
         else:
             raise ValueError("Unknown model type: {}".format(self.model_type))
 
-    def fit_reference(self, lr=0.1, lrd=0.995, num_epochs=500, batch_size=None, seed=None, pyro_validation=True, layer="counts", fp_hack=False):
+    def fit_reference(self, lr=0.1, lrd=0.999, num_epochs=2000, batch_size=None, seed=None, pyro_validation=True, layer="counts", fp_hack=False):
         self.deconvolution_module.fit_reference(
             lr=lr, lrd=lrd,
             num_epochs=num_epochs,
@@ -73,7 +73,7 @@ class DeconV:
             fp_hack=fp_hack
         )
 
-    def deconvolute(self, model_dropout=True, ignore_genes=None, bulk=None, lr=0.1, lrd=0.995, num_epochs=1000, progress=True):
+    def deconvolute(self, model_dropout=True, ignore_genes=None, bulk=None, lr=0.1, lrd=0.999, num_epochs=1000, progress=True):
         self.deconvolution_module.deconvolute(
             model_dropout=model_dropout,
             ignore_genes=ignore_genes,
