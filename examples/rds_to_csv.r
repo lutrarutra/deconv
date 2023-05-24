@@ -14,11 +14,11 @@ sc.eset = readRDS("EMTABesethealthy.rds")
 
 sc.eset$"SubjectName"
 
-prop = music_prop(
-    bulk.eset=bulk.eset, sc.eset=sc.eset,
-    clusters="cellType", samples="sampleID",
-    select.ct = c('alpha', 'beta', 'delta', 'gamma')
-)
+# prop = music_prop(
+#     bulk.eset=bulk.eset, sc.eset=sc.eset,
+#     clusters="cellType", samples="sampleID",
+#     select.ct = c('alpha', 'beta', 'delta', 'gamma')
+# )
 prop$Est.prop.weighted
 
 fastWrite(t(as.matrix(exprs((bulk.eset)))), "bulk.tsv")
@@ -28,4 +28,4 @@ fastWrite(t(as.matrix(exprs((sc.eset)))), "sc.tsv")
 
 fastWrite(as.matrix(pData(sc.eset)), "pdata.tsv")
 
-varLabels(sc.eset)
+# varLabels(sc.eset)
