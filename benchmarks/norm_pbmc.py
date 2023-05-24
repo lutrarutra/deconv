@@ -32,36 +32,31 @@ PARAMS = {
 }
 
 def read_inputs(indir):
-    reference_file = os.path.join(indir, "sc.h5ad")
-    bulk_file = os.path.join(indir, "bulk.tsv")
+    reference_file = os.path.join(indir, "reference.h5ad")
+    bulk_file = os.path.join(indir, "bulk.txt")
     cell_types = [
-        'T CD4', 'Monocytes',
-        'B cells', 'T CD8',
+        'CD4 T', 'Monocytes',
+        'B cells', 'CD8 T',
         'NK', 'Monocytes',
-        'unknown', 'unknown']
-    true_df = pd.read_csv(os.path.join(indir, "true.tsv"), sep="\t", index_col=0)
+        'DCs']
+    true_df = pd.read_csv(os.path.join(indir, "true.csv"), index_col=0)
     true_df = true_df.reindex(sorted(true_df.columns), axis=1)
 
-    sadata = sc.read_h5ad(reference_file)
-    sadata.X = sadata.X.astype("float32").toarray()
-    sadata.var.set_index("gene_ids", inplace=True)
+    adata = sc.read_h5ad(reference_file)
+    adata.X = adata.X.astype("float32").toarray()
 
-    sadata = sadata[sadata.obs["labels"].astype("str").isin(cell_types), :].copy()
+    adata = adata[adata.obs["labels"].astype("str").isin(cell_types), :].copy()
 
-    print(sadata.obs.groupby("labels").size())
+    print(adata.obs.groupby("labels").size())
 
-    bulk_df = pd.read_csv(bulk_file, sep="\t", index_col=None)
-    if bulk_df.iloc[:,0].dtype == "O":
-        bulk_df.set_index(bulk_df.columns[0], inplace=True)
+    bulk_df = pd.read_table(bulk_file, index_col=0)
 
-    bulk_df.index = bulk_df.index.str.split(".").str[0]
-    bulk_df = bulk_df[~bulk_df.index.duplicated(keep=False)]
     print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
 
-    sc.pp.filter_cells(sadata, min_genes=200)
-    sc.pp.filter_genes(sadata, min_cells=3)
-    adata = dv.tl.combine(sadata, bulk_df)
-    del sadata
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_genes(adata, min_cells=3)
+    adata = dv.tl.combine(adata, bulk_df)
+    scout.tl.scale_log_center(adata, target_sum=None, exclude_highly_expressed=True)
     return adata, true_df
 
 
