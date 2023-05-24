@@ -1,4 +1,4 @@
-import deconV as dv
+import DeconV as dv
 import scout
 
 import glob, tqdm, time, os, argparse, json
@@ -94,7 +94,7 @@ def run_benchmark(outdir, adata, true_df, device):
             device=device
         )
 
-        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=True)
+        decon.fit_reference(num_epochs=2000, lr=0.1, lrd=0.999, layer="counts", fp_hack=False)
 
         suffix = f"{dropout_type}{'_bd' if bulk_dropout else ''}"
 
