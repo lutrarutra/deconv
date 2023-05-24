@@ -1,8 +1,8 @@
 library(MuSiC)
-library(reticulate)
-library(dplyr)
-library(DESeq2)
-library(Biobase)
+# library(reticulate)
+# library(dplyr)
+# library(DESeq2)
+# library(Biobase)
 library(SingleCellExperiment)
 
 setwd("~/Documents/dev/deconv_benchmark/deconv/benchmarks/3rd-party/music/pbmc")
@@ -30,7 +30,7 @@ names(colData(sc.sce))
 
 est = music_prop(
     bulk.mtx=bulk_counts, sc.sce=sc.sce, clusters='labels',
-    select.ct=NULL, samples='sampleID'
+    select.ct=NULL, samples='batch'
 )
 
 fastWrite(est$"Est.prop.weighted", "music_proportions.csv", sep=",")
