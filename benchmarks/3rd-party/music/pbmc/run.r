@@ -5,9 +5,7 @@ library(MuSiC)
 # library(Biobase)
 library(SingleCellExperiment)
 
-setwd("~/Documents/dev/deconv_benchmark/deconv/benchmarks/3rd-party/music/pbmc")
 source("https://raw.githubusercontent.com/DimitriMeistermann/veneR/main/loadFun.R")
-
 
 sc_counts <- t(read.csv("data/pbmc_counts.csv", header=T, row.names=1, sep=","))
 sc_pdata <- read.csv("data/pbmc_celltypes.csv")

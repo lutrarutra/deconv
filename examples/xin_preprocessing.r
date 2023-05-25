@@ -2,7 +2,7 @@ library(MuSiC)
 source("https://raw.githubusercontent.com/DimitriMeistermann/veneR/main/loadFun.R")
 
 getwd()
-setwd("~/Documents/dev/deconv_benchmark/deconv/data/xin/")
+setwd("~/Documents/dev/fimm/data/xin/")
 
 # Single-cell for artificial bulk
 # SingleCellExperiment from: https://xuranw.github.io/MuSiC/articles/pages/data.html
