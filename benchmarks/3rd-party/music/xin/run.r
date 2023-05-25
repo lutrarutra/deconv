@@ -15,9 +15,6 @@ XinT2D.construct.full = bulk_construct(XinT2D.eset, clusters = 'cellType', sampl
 XinT2D.construct.full$prop.real = relative.ab(XinT2D.construct.full$num.real, by.col = FALSE)
 bulk.eset = XinT2D.construct.full$Bulk.counts
 
-
-
-
 est = music_prop(
     bulk.mtx=bulk_counts, sc.sce=sc.sce, clusters='labels',
     select.ct=NULL, samples='sampleID'
