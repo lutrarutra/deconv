@@ -1,4 +1,4 @@
-import deconV as dv
+import DeconV as dv
 import scout
 
 import glob, tqdm, time, os, argparse, json
