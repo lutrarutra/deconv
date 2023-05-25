@@ -764,24 +764,24 @@ def scatter_check(
         plt.show()
 
 
-def xypredictions(df, hue="cell_type", style="sample", figsize=(8, 8), dpi=100, path=None, log=False, legend=True):
-    rmse = ((df["true"] - df["est"]) ** 2).mean() ** 0.5
-    mad = (df["true"] - df["est"]).abs().mean()
-    r = df["true"].corr(df["est"])
+def xypredictions(df, x="true", y="est", hue="cell_type", style="sample", figsize=(8, 8), dpi=100, path=None, log=False, legend=True):
+    rmse = ((df[x] - df[y]) ** 2).mean() ** 0.5
+    mad = (df[x] - df[y]).abs().mean()
+    r = df[x].corr(df[y])
     
     f, ax = plt.subplots(figsize=figsize, dpi=dpi)
     
     if "min" in df.columns:
         ax.errorbar(
-            df["true"], df["est"], yerr=df[["min", "max"]].values.T,
+            df[x], df[y], yerr=df[["min", "max"]].values.T,
             fmt=",", alpha=.7, zorder=1, c="#c3c3c3",
             label="95% CI", capsize=2
         )
 
     sns.scatterplot(
         data=df,
-        x="true",
-        y="est",
+        x=x,
+        y=y,
         hue=hue,
         style=style,
         edgecolor=(0, 0, 0, 0.8),
