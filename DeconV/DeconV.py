@@ -8,8 +8,8 @@ import pyro.distributions as dist
 from matplotlib import pyplot as plt
 
 from . import models
+from . import tools as tl
 
-import scout
 class DeconV:
     def __init__(
             self, adata, cell_type_key,
@@ -140,7 +140,7 @@ class DeconV:
     
     def check_fit(self, path=None):
         f, ax = plt.subplots(self.n_labels, self.n_labels, figsize=(20, 20), dpi=100)
-        res = scout.tl.rank_marker_genes(self.adata, self.label_key, copy=True)
+        res = tl.rank_marker_genes(self.adata, self.label_key, copy=True)
         for i in range(self.n_labels):
             for j in range(self.n_labels):
                 gene = res[f"{self.labels[i]} vs. rest"].sort_values("gene_score", ascending=False).index[0]
