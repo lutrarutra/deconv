@@ -1,4 +1,4 @@
-import deconV as dv
+import DeconV as dv
 import scout
 
 import glob, tqdm, time, os, argparse, json
@@ -24,38 +24,39 @@ PARAMS = {
 }
 
 def read_inputs(indir):
-    reference_file = os.path.join(indir, "sc.tsv")
-    reference_mdata_file = os.path.join(indir, "pdata.tsv")
-    bulk_file = os.path.join(indir, "bulk.tsv")
-    cell_types = ["alpha", "delta", "gamma", "beta", "lognormal"]
-    true_df = pd.read_csv(os.path.join(indir, "true.tsv"), sep="\t", index_col=0)
-    true_df = true_df.reindex(sorted(true_df.columns), axis=1)
+    reference_file = os.path.join(indir, "sc.txt")
+    reference_mdata_file = os.path.join(indir, "pdata.txt")
+    bulk_file = os.path.join(indir, "bulk.txt")
+    true_df = pd.read_table(os.path.join(indir, "proportions.txt"), index_col=0)
+    true_df.sort_index(axis="columns", inplace=True)
+    true_df.index.name = "sample"
+    cell_types = ["alpha", "delta", "gamma", "beta"]
 
-    sadata = dv.tl.read_data(reference_file)
+    adata = sc.read_csv(reference_file, first_column_names=True, delimiter="\t")
 
-    pheno_df = pd.read_csv(reference_mdata_file, sep="\t", index_col=0)
+    pheno_df = pd.read_table(reference_mdata_file, index_col=0)
     pheno_df.index.name = None
-    common_cells = list(set(pheno_df.index.tolist()) & set(sadata.obs_names.tolist()))
+    common_cells = list(set(pheno_df.index.tolist()) & set(adata.obs_names.tolist()))
 
-    sadata = sadata[common_cells, :].copy()
+    adata = adata[common_cells, :].copy()
     pheno_df = pheno_df.loc[common_cells, :].copy()
-    sadata.obs["labels"] = pheno_df["cellType"].tolist()
-    sadata.obs["labels"] = sadata.obs["labels"].astype("category")
+    adata.obs["labels"] = pheno_df["cellType"].tolist()
+    adata.obs["labels"] = adata.obs["labels"].astype("category")
 
-    sadata = sadata[sadata.obs["labels"].astype("str").isin(cell_types), :].copy()
+    adata = adata[adata.obs["labels"].astype("str").isin(cell_types), :].copy()
 
-    print(sadata.obs.groupby("labels").size())
+    print(adata.obs.groupby("labels").size())
 
-    bulk_df = pd.read_csv(bulk_file, sep="\t", index_col=None)
+    bulk_df = pd.read_table(bulk_file, index_col=None)
     if bulk_df.iloc[:,0].dtype == "O":
         bulk_df.set_index(bulk_df.columns[0], inplace=True)
     print(f"bulk RNA-seq data - samples: {bulk_df.shape[0]}, genes: {bulk_df.shape[1]}")
 
-    sc.pp.filter_cells(sadata, min_genes=200)
-    sc.pp.filter_genes(sadata, min_counts=100)
-    adata = dv.tl.combine(sadata, bulk_df)
-    del sadata
-    scout.tl.scale_log_center(adata, target_sum=None, exclude_highly_expressed=True)
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_genes(adata, min_counts=100)
+    adata = dv.tl.combine(adata, bulk_df)
+    scout.tl.scale_log_center(adata)
+
     return adata, true_df
 
 
@@ -100,7 +101,6 @@ def run_benchmark(outdir, adata, true_df, device):
 
         suffix = f"n{n_genes}"
 
-        decon.check_fit(path=os.path.join(out_dir, f"ref_fit_{suffix}.pdf"))
         plt.close()
 
         proportions = decon.deconvolute(model_dropout=bulk_dropout, lrd=0.999, lr=0.1, num_epochs=1000).cpu()

@@ -29,6 +29,7 @@ def read_inputs(indir):
     bulk_file = os.path.join(indir, "bulk.txt")
     true_df = pd.read_table(os.path.join(indir, "proportions.txt"), index_col=0)
     true_df.sort_index(axis="columns", inplace=True)
+    true_df.index.name = "sample"
     cell_types = ["alpha", "delta", "gamma", "beta"]
 
     adata = sc.read_csv(reference_file, first_column_names=True, delimiter="\t")
