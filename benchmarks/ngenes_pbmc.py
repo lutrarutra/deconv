@@ -3,17 +3,11 @@ import scout
 
 import glob, tqdm, time, os, argparse, json
 import torch
-import pyro
-import pyro.distributions as dist
-import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
 
 import pandas as pd
 import numpy as np
 import scanpy as sc
-import scvi
-import seaborn as sns
 import scout
 
 import itertools
@@ -110,9 +104,13 @@ def run_benchmark(outdir, adata, true_df, device):
 
                 decon.deconvolute(model_dropout=bulk_dropout, ignore_genes=ignore_genes, lrd=0.999, lr=0.1, num_epochs=1000, progress=False)
 
-                res_df = decon.get_results_df()
-                res_df["true"] = true_df.melt()["value"]
-                rmse, mad, r = dv.pl.xypredictions(res_df)
+                res_melt = decon.get_results_df()
+                true_melt = true_df.reset_index().melt(id_vars="sample").rename(columns={"value":"true", "variable":"cell_type"})
+                assert (true_melt["sample"] == res_melt["sample"]).all()
+                assert (true_melt["cell_type"] == res_melt["cell_type"]).all()
+                res_melt["true"] = true_melt["true"].values
+
+                rmse, mad, r = dv.pl.xypredictions(res_melt, figsize=(5,5), dpi=150, legend=False)
                 plt.close()
             
                 suffix = f"n{n_genes}_{ii}"
