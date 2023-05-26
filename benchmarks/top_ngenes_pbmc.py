@@ -92,7 +92,6 @@ def run_benchmark(outdir, adata, true_df, device):
 
         suffix = f"n{n_genes}"
 
-        decon.check_fit(path=os.path.join(out_dir, f"ref_fit_{suffix}.pdf"))
         plt.close()
 
         proportions = decon.deconvolute(model_dropout=bulk_dropout, lrd=0.999, lr=0.1, num_epochs=1000).cpu()
