@@ -89,7 +89,7 @@ class Base(ABC):
             batch_size = self.adata.n_obs
         loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
 
-        pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+        pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}", dynamic_ncols=True)
         for epoch in pbar:
             losses = []
             for x, labels, _ in loader:
@@ -149,7 +149,7 @@ class Base(ABC):
         svi = SVI(self.dec_model, guide, optim=optim, loss=Trace_ELBO())
 
         if progress:
-            pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
+            pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}", dynamic_ncols=True)
         else:
             pbar = range(num_epochs)
 
