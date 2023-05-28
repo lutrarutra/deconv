@@ -15,7 +15,6 @@ import scanpy as sc
 import scvi
 import seaborn as sns
 import tqdm
-import scout
 
 import itertools
 
