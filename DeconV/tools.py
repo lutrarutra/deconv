@@ -1,8 +1,11 @@
 import threading, warnings
+from typing import Literal
 
 import scanpy as sc
 import numpy as np
 import pandas as pd
+
+import scipy
 
 
 def fmt_c(w):
@@ -130,18 +133,79 @@ def combine(adata, bulk_df):
 
     return adata
 
+def group_stats(adata, groupby, eps=1e-8):
+    n_groups = len(adata.obs[groupby].cat.categories)
+    n_genes = adata.n_vars
+    
+    adata.varm[f"mu_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    adata.varm[f"var_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    adata.varm[f"cv_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    adata.varm[f"log_mu_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    # adata.varm[f"log_var_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    adata.varm[f"dropout_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    # adata.varm[f"nan_mu_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    # adata.varm[f"nan_log_mu_expression_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
+    # adata.varm[f"dropout_weight_{groupby}"] = np.empty((n_genes, n_groups), np.float32)
 
-def rank_marker_genes(adata, groupby, method="t-test", eps=None):
+
+    for i, group in enumerate(adata.obs[groupby].cat.categories):
+        a = adata[adata.obs[groupby] == group, :].layers["counts"]
+        if isinstance(a, scipy.sparse.csr_matrix):
+            a = a.toarray()
+
+        adata.varm[f"mu_expression_{groupby}"][:, i] = np.asarray(a.mean(axis=0)).flatten()
+
+        assert np.isnan(adata.varm[f"mu_expression_{groupby}"][:, i]).any() == False
+
+        adata.varm[f"var_expression_{groupby}"][:, i] = np.asarray(a.var(axis=0)).flatten()
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cv = a.std(axis=0) / adata.varm[f"mu_expression_{groupby}"][:, i]
+        # nans where std and mu is 0, and posinf where std > 0 and mu is 0
+        adata.varm[f"cv_{groupby}"][:, i] = np.nan_to_num(cv, nan=0.0, posinf=0.0)
+
+        adata.varm[f"log_mu_expression_{groupby}"][:, i] = np.asarray(np.log1p(a).mean(0)).flatten()
+
+        # assert np.isnan(adata.varm[f"log_mu_expression_{groupby}"][:, i]).any() == False
+
+        # adata.varm[f"log_var_expression_{groupby}"][:, i] = np.asarray(
+        #     np.log1p(a)
+        # ).var(0).flatten()
+
+        adata.varm[f"dropout_{groupby}"][:, i] = np.asarray(
+            (a == 0).mean(0)
+        ).flatten()
+
+
+def rank_marker_genes(
+    adata, groupby, reference="rest", corr_method="benjamini-hochberg", logeps=-500, copy=False,
+    method: Literal["t-test", "logreg", "wilcoxon", "t-test_overestim_var"] = "t-test"
+):
+    if adata.obs[groupby].dtype.name != "category":
+        adata.obs[groupby] = adata.obs[groupby].astype("category")
+
+    if f"mu_expression_{groupby}" not in adata.varm.keys():
+        group_stats(adata, groupby)
+
     rank_res = sc.tl.rank_genes_groups(
-        adata, groupby=groupby, method=method, copy=True
+        adata, groupby=groupby, method=method, corr_method=corr_method, copy=True, reference=reference
     ).uns["rank_genes_groups"]
 
-    adata.uns[f"rank_genes_{groupby}"] = {}
+    res = {}
 
-    for i, ref in enumerate(adata.obs[groupby].unique()):
-        adata.uns["rank_genes_" + groupby][ref] = _rank_group(
-            adata, rank_res, groupby, i, ref, eps
-        )
+    for i, ref in enumerate(rank_res["names"].dtype.names):
+        res[f"{str(ref)} vs. {reference}"] = _rank_group(adata, rank_res, groupby, i, ref, logeps)
+
+    if not copy:
+        if "de" not in adata.uns:
+            adata.uns["de"] = {}
+
+        adata.uns["de"][groupby] = res
+
+        print(f"DE: added results to 'adata.uns['de']['{groupby}']'")
+    else:
+        return res
 
 
 def read_data(path):
