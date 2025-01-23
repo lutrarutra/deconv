@@ -1,0 +1,10 @@
+*.pyc
+__pycache__/
+.vscode/
+data/
+test/
+temp/
+build/
+node_modules/
+*.egg-info/
+deconv.*.zip
