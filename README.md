@@ -12,7 +12,7 @@
 
 ## How to run? (Tested with Python 3.10.9)
 0. Download
-    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.0/deconv.v0.9.0.zip`
+    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.0/deconv.v0.9.0.zip` or `git clone https://github.com/lutrarutra/deconv`
     - `unzip deconv.v0.9.0.zip` 
     - `cd deconv.v0.9.0`
 1. Install dependencies
@@ -26,7 +26,7 @@
             bulk=bulk_df,                   # bulk_df is a pandas DataFrame with genes as columns and samples as rows
             cell_type_key="labels",         # cell_type_key is the column key in adata.obs that holds the cell type annotations 
             dropout_type="separate",        # 'separate', 'shared', or None
-            model_type="gamma",             # 'nb', 'gamma', 'beta', 'lognormal', or static    
+            model_type="gamma",             # 'nb', 'gamma', 'beta', 'lognormal', or 'static'    
             device=device,                  # 'cpu' or 'cuda'
             layer=None,                     # You can specify layer where raw counts are stored. None denotes adata.X.
             top_n_variable_genes=10000,     # Number of top variable genes to use, None to use all
