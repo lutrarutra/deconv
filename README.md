@@ -10,15 +10,19 @@
 
 ![](https://github.com/lutrarutra/deconv/blob/main/DeconV/figures/banner.png?raw=true)
 
-## How to run? (Tested with Python 3.10.9)
+## Installation
+### Conda
+- `conda install lutrarutra::deconv`
+### PIP
 0. Download
-    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.0/deconv.v0.9.0.zip` or `git clone https://github.com/lutrarutra/deconv`
-    - `unzip deconv.v0.9.0.zip` 
-    - `cd deconv.v0.9.0`
+    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.1/deconv.v0.9.1.zip` or `git clone https://github.com/lutrarutra/deconv`
+    - `unzip deconv.v0.9.1.zip` 
+    - `cd deconv.v0.9.1`
 1. Install dependencies
     - `pip install -r requirements.txt`
 2. Install DeconV
     - `pip install -e .`
+## How to run?
 3. Run as a notebook or Python script. See `examples/` for examples:
     ```python
         decon = dv.DeconV(

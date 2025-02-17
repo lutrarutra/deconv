@@ -1,40 +1,41 @@
 package:
-  name: deconv
-  version: 0.9.0
+    name: deconv
+    version: 0.9.1
 
 source:
-  path: ..
+    path: ..
 
 build:
-  script: python setup.py install
+    noarch: python
+    script: pip install .
   
 requirements:
-  build:
-    - python
-    - setuptools  # or any other build requirements
-  run:
-    - python
-    - ipykernel
-    - tqdm
-    - wheel
-    - pytorch
-    - torchvision
-    - torchaudio
-    - numpy
-    - scipy
-    - matplotlib
-    - matplotlib-inline
-    - anndata
-    - pandas
-    - scanpy
-    - numba
-    - pyro-ppl
-    - leidenalg
-    - plotly
-    - python-kaleido
-    - nbformat
+    build:
+        - python
+        - setuptools
+    run:
+        - python
+        - numpy>=2
+        - pandas>=2.2.2
+        - ipykernel
+        - tqdm
+        - wheel
+        - pytorch
+        - torchvision
+        - torchaudio
+        - scipy
+        - matplotlib
+        - matplotlib-inline
+        - anndata
+        - scanpy
+        - numba
+        - pyro-ppl
+        - leidenalg
+        - plotly
+        - python-kaleido
+        - nbformat
 
 about:
-  home: https://github.com/lutrarutra/deconv
-  license: MIT
-  summary: "Bulk RNA-seq Cell Type Proportion Deconvolution."
+    home: https://github.com/lutrarutra/deconv
+    license: MIT
+    summary: "Bulk RNA-seq Cell Type Proportion Deconvolution."

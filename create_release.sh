@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <source_folder> <version>"
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <version>"
     exit 1
 fi
 
-SOURCE_FOLDER=$1
-VERSION=$2
+SCRIPT_PATH="$(readlink -f "$0")"
+SOURCE_FOLDER=$(dirname "$SCRIPT_PATH")
+VERSION=$1
 FOLDER_NAME="deconv.$VERSION"
 ZIP_FILE="$FOLDER_NAME.zip"
 
@@ -23,7 +24,6 @@ mkdir "$FOLDER_NAME" || { echo "Failed to create directory $FOLDER_NAME"; exit 1
 # Copy files from the source folder to the new version folder
 cp -r "$SOURCE_FOLDER/DeconV" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 cp -r "$SOURCE_FOLDER/README.md" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
-cp -r "$SOURCE_FOLDER/__init__.py" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 cp -r "$SOURCE_FOLDER/setup.py" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 cp -r "$SOURCE_FOLDER/requirements.txt" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 
@@ -36,15 +36,11 @@ echo "Created zip file: $ZIP_FILE"
 
 echo "Building conda package..."
 
-mkdir -p $SOURCE_FOLDER/build
-mkdir -p $SOURCE_FOLDER/build/conda
+conda build purge
+build_path=$(conda build $SOURCE_FOLDER --output)
 
-build_path=$(conda build $SOURCE_FOLDER --output --output-folder $SOURCE_FOLDER/build/conda)
-
-echo "Converting to platforms..."
-
-conda convert --platform linux-64 $build_path
-
+# conda convert --platform all $build_path
+echo "Built conda package: $build_path"
 echo "Uploading to Anaconda.org..."
 
-# anaconda upload $(build_path)
+anaconda upload "$build_path"
