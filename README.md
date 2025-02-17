@@ -6,8 +6,6 @@
 - GPU acceleration with Pyro & PyTorch
 - Integrates with ScanPy and AnnData-object
 
-## Benchmarks: [github.com/lutrarutra/deconv/tree/benchmark](https://github.com/lutrarutra/deconv/tree/benchmark) 
-
 ![](https://github.com/lutrarutra/deconv/blob/main/DeconV/figures/banner.png?raw=true)
 
 ## Installation
