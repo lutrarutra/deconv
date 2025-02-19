@@ -20,9 +20,9 @@ requirements:
         - ipykernel
         - tqdm
         - wheel
-        - pytorch
-        - torchvision
-        - torchaudio
+        - pytorch::pytorch
+        - pytorch::torchvision
+        - pytorch::torchaudio
         - scipy
         - matplotlib
         - matplotlib-inline
