@@ -37,7 +37,9 @@ echo "Created zip file: $ZIP_FILE"
 echo "Building conda package..."
 
 conda build purge
+# --ouput gives the output path of the built package (i believe there is bug, that's why we need to build it twice)
 build_path=$(conda build $SOURCE_FOLDER --output)
+conda build $SOURCE_FOLDER --debug
 
 # conda convert --platform all $build_path
 echo "Built conda package: $build_path"

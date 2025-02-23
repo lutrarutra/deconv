@@ -1,6 +1,6 @@
 package:
     name: deconv
-    version: 0.9.1
+    version: 0.9.2
 
 source:
     path: ..
@@ -14,15 +14,15 @@ requirements:
         - python
         - setuptools
     run:
-        - python
+        - python>=3.10
         - numpy>=2
         - pandas>=2.2.2
         - ipykernel
         - tqdm
         - wheel
-        - pytorch::pytorch
-        - pytorch::torchvision
-        - pytorch::torchaudio
+        - pytorch-gpu
+        - torchvision
+        - torchaudio
         - scipy
         - matplotlib
         - matplotlib-inline

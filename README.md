@@ -10,12 +10,19 @@
 
 ## Installation
 ### Conda
-- `conda install lutrarutra::deconv`
+- CPU only:
+    - `conda install lutrarutra::deconv`
+- or GPU (CUDA):
+    - `conda install lutrarutra::deconv pytorch-gpu`
+- New Environment:
+    - `conda create -n deconv lutrarutra::deconv # CPU only`
+    - `conda create -n deconv lutrarutra::deconv pytorch-gpu  # GPU`
+    
 ### PIP
 0. Download
-    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.1/deconv.v0.9.1.zip` or `git clone https://github.com/lutrarutra/deconv`
-    - `unzip deconv.v0.9.1.zip` 
-    - `cd deconv.v0.9.1`
+    - `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.2/deconv.v0.9.2.zip` or `git clone https://github.com/lutrarutra/deconv`
+    - `unzip deconv.v0.9.2.zip` 
+    - `cd deconv.v0.9.2`
 1. Install dependencies
     - `pip install -r requirements.txt`
 2. Install DeconV

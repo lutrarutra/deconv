@@ -2,16 +2,15 @@ library(MuSiC)
 source("https://raw.githubusercontent.com/DimitriMeistermann/veneR/main/loadFun.R")
 
 getwd()
-setwd("~/Documents/dev/fimm/data/xin/")
+setwd("~/Documents/dev/deconv/data/xin")
 
 # Single-cell for artificial bulk
-# SingleCellExperiment from: https://xuranw.github.io/MuSiC/articles/pages/data.html
+# https://xuranw.github.io/MuSiC/data/XinT2Dsce.rds from: https://xuranw.github.io/MuSiC/articles/pages/data.html
 # Single cell RNA-seq data of pancreatic islet from healthy and diseased individuals(Xin et al.)
-# XinT2D.eset = readRDS('raw/XinT2Deset.rds')
 XinT2D.sce = readRDS('raw/XinT2Dsce.rds')
 
 # Single-cell Reference
-# ExpressionSet from:  https://xuranw.github.io/MuSiC/articles/pages/data.html
+# https://xuranw.github.io/MuSiC/data/EMTABesethealthy.rds from:  https://xuranw.github.io/MuSiC/articles/pages/data.html
 # Single cell RNA-seq data of pancreatic islets from healthy individuals (Segerstolpe et al.)
 sc.eset = readRDS('raw/EMTABesethealthy.rds')
 
