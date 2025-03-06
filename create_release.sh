@@ -22,10 +22,9 @@ fi
 mkdir "$FOLDER_NAME" || { echo "Failed to create directory $FOLDER_NAME"; exit 1; }
 
 # Copy files from the source folder to the new version folder
-cp -r "$SOURCE_FOLDER/DeconV" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
+cp -r "$SOURCE_FOLDER/deconv" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 cp -r "$SOURCE_FOLDER/README.md" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
-cp -r "$SOURCE_FOLDER/setup.py" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
-cp -r "$SOURCE_FOLDER/requirements.txt" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
+cp -r "$SOURCE_FOLDER/pyproject.toml" "$FOLDER_NAME/" || { echo "Failed to copy files from $SOURCE_FOLDER"; exit 1; }
 
 # Create a zip file of the new version folder
 zip -r "$ZIP_FILE" "$FOLDER_NAME" || { echo "Failed to create zip file $ZIP_FILE"; exit 1; }
@@ -38,8 +37,8 @@ echo "Building conda package..."
 
 conda build purge
 # --ouput gives the output path of the built package (i believe there is bug, that's why we need to build it twice)
-build_path=$(conda build $SOURCE_FOLDER --output)
-conda build $SOURCE_FOLDER --debug
+build_path=$(conda build --output $SOURCE_FOLDER)
+conda build --debug $SOURCE_FOLDER
 
 # conda convert --platform all $build_path
 echo "Built conda package: $build_path"

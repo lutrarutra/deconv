@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project]
+name = "deconv"
+version = "0.9.3"
+description = "Probabilistic Cell Type Deconvolution of Bulk RNA-seq"
+authors = [
+    { name = "Artur Gynter", email = "artur.gynter@proton.me" }
+]
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+dependencies = [
+    "numpy>= 2",
+    "pandas>= 2.2.2",
+    "pyyaml",
+    "ipykernel",
+    "tqdm",
+    "wheel",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "scipy",
+    "matplotlib",
+    "matplotlib-inline",
+    "anndata",
+    "scanpy",
+    "numba",
+    "pyro-ppl",
+    "harmonypy",
+    "leidenalg",
+    "trimap",
+    "plotly",
+    "kaleido",
+    "nbformat",
+]
+
+[project.scripts]
+deconv = "deconv.main:main"
+
+[project.urls]
+Repository = "https://github.com/lutrarutra/deconv"
+Pre-print = "https://www.biorxiv.org/content/10.1101/2023.12.07.570524v1"

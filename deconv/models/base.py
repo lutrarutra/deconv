@@ -72,6 +72,7 @@ class ReferenceModel(ABC):
         self.device = device
         self.dataset = RefDataSet(adata, self.labels_key, device=self.device, layer=layer, fp_hack=fp_hack)
         self.var_names = adata.var_names
+        self.training_history = None
 
     def fit(
         self, lr: float, lrd: float, num_epochs: int, batch_size: int | None,
@@ -94,20 +95,25 @@ class ReferenceModel(ABC):
         loader = torch.utils.data.DataLoader(self.dataset, batch_size=batch_size)
 
         pbar = tqdm.tqdm(range(num_epochs), bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}", dynamic_ncols=True)
+        training_history = []
         for epoch in pbar:
             losses = []
             for x, labels, _ in loader:
                 self.reference_loss: torch.Tensor = svi.step(x, labels)  # type: ignore
                 losses.append(self.reference_loss)
 
+            epoch_loss = np.mean(self.reference_loss)
             pbar.set_postfix(
                 loss=f"{np.mean(self.reference_loss):.2e}",
                 lr=f"{list(optim.get_state().values())[0]['param_groups'][0]['lr']:.2e}",
             )
+            training_history.append(epoch_loss)
 
         self._params = dict()
         for param in pyro.get_param_store():
             self._params[str(param)] = pyro.param(param).clone().detach()
+        
+        self.training_history: list[float] | None = training_history
 
     @abstractmethod
     def get_params(self, genes: list[str] | np.ndarray | None) -> dict[str, torch.Tensor]:

@@ -1,5 +1,4 @@
 import warnings
-import tqdm
 from typing import Literal
 
 import scanpy as sc
@@ -7,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 import scipy
+import scipy.sparse
 
 
 def fmt_c(w):
@@ -60,9 +60,9 @@ def __rank_group(adata: sc.AnnData, rank_res: pd.DataFrame, groupby: str, group:
     else:
         bg_gex = adata[adata.obs[groupby] == reference, :].layers["ncounts"]
 
-    if isinstance(group_gex, scipy.sparse.csr_matrix):
+    if scipy.sparse.issparse(group_gex):
         group_gex = group_gex.toarray()
-    if isinstance(bg_gex, scipy.sparse.csr_matrix):
+    if scipy.sparse.issparse(bg_gex):
         bg_gex = bg_gex.toarray()
 
     df["mu_gex"] = np.asarray(group_gex.mean(axis=0)).flatten()
