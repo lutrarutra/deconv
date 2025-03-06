@@ -106,6 +106,7 @@
 
     - Use `fp_hack=True` (python) or `--fp-hack` (bash/cli) to enable the floating point underflow hack. This will help with numerical stability. This turns 0s in the gene expression matrix into 1s.
 
+## Figures
 ![](https://github.com/lutrarutra/deconv/blob/main/examples/figures/pbmc_benchmark_scatter.png?raw=true)
 
 
