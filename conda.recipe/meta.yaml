@@ -7,7 +7,7 @@ source:
 
 build:
     noarch: python
-    script: pip install --no-deps .
+    script: python -m pip install --no-deps .
   
 requirements:
     build:
@@ -21,7 +21,7 @@ requirements:
         - ipykernel
         - tqdm
         - wheel
-        - pytorch-gpu
+        - pytorch
         - torchvision
         - torchaudio
         - scipy
