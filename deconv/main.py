@@ -122,7 +122,7 @@ def main() -> int:
     print(f"Using device: {args.device}")
 
     if args.ref.endswith(".h5ad"):
-        adata = sc.read_h5ad(args.adata)
+        adata = sc.read_h5ad(args.ref)
     else:
         gex = pd.read_csv(
             args.ref,
