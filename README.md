@@ -23,9 +23,9 @@
     
 ### PIP
 0. Download
-    - `git clone https://github.com/lutrarutra/deconv` or `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.3/deconv.v0.9.3.zip`
-    - `unzip deconv.v0.9.3.zip` 
-    - `cd deconv.v0.9.3`
+    - `git clone https://github.com/lutrarutra/deconv` or `wget https://github.com/lutrarutra/deconv/releases/download/v0.9.4/deconv.v0.9.4.zip`
+    - `unzip deconv.v0.9.4.zip` 
+    - `cd deconv.v0.9.4`
 1. Install:
     - Normal mode:
         - `pip install .`
