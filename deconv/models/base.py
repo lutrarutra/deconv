@@ -100,6 +100,7 @@ class ReferenceModel(ABC):
             losses = []
             for x, labels, _ in loader:
                 self.reference_loss: torch.Tensor = svi.step(x, labels)  # type: ignore
+                self.reference_loss /= self.n_genes
                 losses.append(self.reference_loss)
 
             epoch_loss = np.mean(self.reference_loss)

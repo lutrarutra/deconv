@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+
+context:
+  package_name: deconv
+  package_version: ${{ env.get("GIT_TAG") }}
+  build_number: ${{ env.get("NEW_BUILD_NUMBER") | int }}
+  commit_hash: ${{ env.get("GIT_COMMIT_HASH") }}
+
+package:
+  name: ${{ package_name|lower }}
+  version: ${{ package_version|replace("-", "_") }}
+  
+source:
+  git: https://github.com/lutrarutra/deconv.git
+  depth: 1
+ 
+build:
+  noarch: python
+  number: ${{ build_number }}
+  string: ${{ commit_hash[:7] }}_${{ build_number }}
+  script:
+    - export SETUPTOOLS_SCM_PRETEND_VERSION=${{ package_version }}
+    - python -m pip install --no-deps .
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+    - setuptools-scm
+    - wheel
+  run:
+    - python
+    - numpy>=2
+    - pandas>=2.2.2
+    - pyyaml
+    - ipykernel
+    - tqdm
+    - wheel
+    - pytorch
+    - torchvision
+    - torchaudio
+    - scipy
+    - matplotlib
+    - matplotlib-inline
+    - anndata
+    - scanpy
+    - numba
+    - pyro-ppl
+    - leidenalg
+    - plotly
+    - python-kaleido
+    - nbformat
+
+about:
+  license: MIT
+  homepage: https://github.com/lutrarutra/deconv
+  summary: Bulk RNA-seq Cell Type Proportion Deconvolution

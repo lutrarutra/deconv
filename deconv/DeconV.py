@@ -84,6 +84,7 @@ class DeconV:
         self.cell_type_key = cell_type_key
         self.cell_types = adata.obs[cell_type_key].astype("category").cat.categories.tolist()
         self.n_cell_types = len(self.cell_types)
+        self.n_genes = len(self.genes)
 
         self.sub_type_key = sub_type_key
         self.sub_types = adata.obs[sub_type_key].astype("category").cat.categories.tolist() if self.use_sub_types else None
@@ -291,6 +292,18 @@ class DeconV:
         melt["true"] = true_df.reset_index(names=["sample"]).melt("sample")["value"].values
 
         pl.benchmark_scatter(df=melt, path=path, figsize=figsize, dpi=dpi, show=show)
+
+    def plot_benchmark_corr_per_cell_type(
+        self, true_df: pd.DataFrame, path: str | None = None, figsize: tuple[int, int] = (8, 8), dpi: int = 120, log: bool = False,
+        legend: bool = True, show: bool = True
+    ):
+        melt = self.get_results_df()
+        true_df = true_df.reindex(sorted(true_df.columns), axis=1)
+        melt["true"] = true_df.reset_index(names=["sample"]).melt("sample")["value"].values
+
+        pl.benchmark_corr_per_cell_type(
+            df=melt, path=path, figsize=figsize, dpi=dpi, log=log, legend=legend, show=show
+        )
 
     def plot_reference_losses(
         self, log: bool = True, path: str | None = None, figsize: tuple[int, int] = (8, 4), dpi: int = 120, show: bool = True

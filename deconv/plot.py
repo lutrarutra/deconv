@@ -120,6 +120,56 @@ def benchmark_scatter(
         plt.close()
 
 
+def benchmark_corr_per_cell_type(
+    df: pd.DataFrame, x: str = "true", y: str = "est", hue: str | None = "cell_type",
+    figsize=(8, 8), dpi: int = 100, path: str | None = None,
+    log: bool = False, legend: bool = True, show: bool = True
+):
+    rmse = ((df[x] - df[y]) ** 2).mean() ** 0.5
+    r = df[x].corr(df[y])
+    
+    f, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    sns.scatterplot(
+        data=df,
+        x=x,
+        y=y,
+        hue=hue,
+        edgecolor=(0, 0, 0, 0.8),
+        color=(1, 1, 1, 0),
+        linewidth=1,
+        zorder=2,
+        s=80,
+        legend=False
+    )
+    for cell_type, group in df.groupby(hue) if hue is not None else [("", df)]:
+        rmse = ((group[x] - group[y]) ** 2).mean() ** 0.5
+        r = group[x].corr(group[y])
+        sns.regplot(
+            data=group, x=x, y=y, ax=ax, label=f"{cell_type} (R: {r:0.2f} RMSE: {rmse:0.2f})",
+        )
+
+    ax.set_xlabel("True Proportion")
+    ax.set_ylabel("Estimated Proportion")
+    if log:
+        ax.set_yscale("log")
+        ax.set_xscale("log")
+
+    ax.plot([0, 1], [0, 1], color="royalblue", label="y=x")
+
+    _legend = plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, ncols=1)
+    if legend is False:
+        _legend.remove()
+
+    if path:
+        plt.savefig(path, bbox_inches="tight")
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 def loss_plot(
     losses: list, title: str | None = None, log: bool = False, path: str | None = None, figsize: tuple[int, int] = (8, 4), dpi: int = 120, show: bool = True
 ):

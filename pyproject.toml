@@ -1,23 +1,23 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["."]
+[tool.setuptools]
+packages = ["deconv"]
 
 [project]
 name = "deconv"
-version = "0.9.4"
+dynamic = ["version"]
 description = "Probabilistic Cell Type Deconvolution of Bulk RNA-seq"
 authors = [
-    { name = "Artur Gynter", email = "artur.gynter@proton.me" }
+    { name = "Artur Gynter", email = "agynter@pm.me" }
 ]
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 
 dependencies = [
-    "numpy>= 2",
-    "pandas>= 2.2.2",
+    "numpy",
+    "pandas",
     "pyyaml",
     "ipykernel",
     "tqdm",
@@ -46,3 +46,8 @@ deconv = "deconv.main:main"
 [project.urls]
 Repository = "https://github.com/lutrarutra/deconv"
 Pre-print = "https://www.biorxiv.org/content/10.1101/2023.12.07.570524v1"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2",
+]
